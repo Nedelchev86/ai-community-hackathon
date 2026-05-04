@@ -39,14 +39,6 @@ interface MapPoint {
 
 const BURGAS: [number, number] = [42.5048, 27.4626];
 
-const CATEGORY_IMG: Record<Category, string> = {
-  clothes: imgClothes,
-  furniture: imgFurniture,
-  books: imgBooks,
-  tech: imgTech,
-  other: imgOther,
-};
-
 const POINTS: MapPoint[] = [
   { id: "1", type: "donation", category: "clothes", title: "Детски дрехи 2-4г", desc: "Запазени, чисти, готови за нов дом. Включва 8 блузи, 4 панталона и якенце.", lat: 42.5061, lng: 27.4682, status: "available", owner: "Мария Г.", rating: 4.9, postedAgo: "преди 2ч", image: imgClothes },
   { id: "2", type: "donation", category: "furniture", title: "Дървено бюро", desc: "Леки следи от употреба, стабилно, с три чекмеджета. Самовземане.", lat: 42.4998, lng: 27.4711, status: "reserved", owner: "Иван П.", rating: 4.7, postedAgo: "преди 1д", image: imgFurniture },
