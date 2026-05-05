@@ -293,7 +293,7 @@ export const DonationMap = () => {
         </div>
 
         {/* Map */}
-        <Card className="overflow-hidden border-2 shadow-soft h-[600px] relative">
+        <Card className="overflow-hidden border-2 shadow-soft h-[600px] relative z-0 isolate">
           <MapContainer
             center={center}
             zoom={13}
