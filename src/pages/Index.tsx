@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import heroImg from "@/assets/hero-donate.jpg";
 import DonationMap from "@/components/DonationMap";
+import Gamification from "@/components/Gamification";
 
 const Index = () => {
   return (
@@ -19,6 +20,7 @@ const Index = () => {
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#how" className="hover:text-foreground transition-smooth">Как работи</a>
             <a href="#map" className="hover:text-foreground transition-smooth">Карта</a>
+            <a href="#trust" className="hover:text-foreground transition-smooth">Доверие</a>
             <a href="#impact" className="hover:text-foreground transition-smooth">Ефект</a>
             <a href="#community" className="hover:text-foreground transition-smooth">Общност</a>
           </nav>
@@ -113,6 +115,8 @@ const Index = () => {
       </section>
 
       <DonationMap />
+
+      <Gamification />
 
       {/* Impact */}
       <section id="impact" className="bg-gradient-hero py-20 lg:py-28">
