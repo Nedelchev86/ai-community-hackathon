@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Card } from "@/components/ui/card";
@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { toast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import {
   Shirt, Sofa, BookOpen, Cpu, Package, MapPin, Heart, Search,
-  MessageCircle, Phone, Star, Clock, User,
+  MessageCircle, Phone, Star, Clock, User, Send, ArrowLeft, Bell, CheckCheck,
 } from "lucide-react";
 import imgClothes from "@/assets/item-clothes.jpg";
 import imgFurniture from "@/assets/item-furniture.jpg";
@@ -96,6 +98,37 @@ const Recenter = ({ center }: { center: [number, number] }) => {
   return null;
 };
 
+type ChatMessage = {
+  id: string;
+  from: "me" | "them";
+  text: string;
+  ts: number;
+};
+
+const CHAT_KEY = (id: string) => `dnh_chat_${id}`;
+const loadChat = (id: string): ChatMessage[] => {
+  try {
+    return JSON.parse(localStorage.getItem(CHAT_KEY(id)) || "[]");
+  } catch {
+    return [];
+  }
+};
+const saveChat = (id: string, msgs: ChatMessage[]) =>
+  localStorage.setItem(CHAT_KEY(id), JSON.stringify(msgs));
+
+const AUTO_REPLIES = [
+  "Здравей! Благодаря за интереса 💚",
+  "Да, още е налично. Кога ти е удобно?",
+  "Мога да го запазя за теб до утре.",
+  "Намира се близо до центъра, лесно за вземане.",
+  "Супер! Пиши ми час и ще се организираме.",
+];
+
+const formatTime = (ts: number) => {
+  const d = new Date(ts);
+  return d.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
+};
+
 export const DonationMap = () => {
   const [category, setCategory] = useState<Category | "all">("all");
   const [radius, setRadius] = useState(5);
@@ -106,6 +139,54 @@ export const DonationMap = () => {
   });
   const [center] = useState<[number, number]>(BURGAS);
   const [selected, setSelected] = useState<MapPoint | null>(null);
+  const [view, setView] = useState<"details" | "chat">("details");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const replyTimer = useRef<number | null>(null);
+  const scrollEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (selected) setMessages(loadChat(selected.id));
+    else setView("details");
+  }, [selected]);
+
+  useEffect(() => {
+    scrollEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, view]);
+
+  const sendMessage = () => {
+    if (!selected || !draft.trim()) return;
+    const mine: ChatMessage = {
+      id: crypto.randomUUID(),
+      from: "me",
+      text: draft.trim(),
+      ts: Date.now(),
+    };
+    const next = [...messages, mine];
+    setMessages(next);
+    saveChat(selected.id, next);
+    setDraft("");
+
+    if (replyTimer.current) window.clearTimeout(replyTimer.current);
+    const point = selected;
+    replyTimer.current = window.setTimeout(() => {
+      const reply: ChatMessage = {
+        id: crypto.randomUUID(),
+        from: "them",
+        text: AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)],
+        ts: Date.now(),
+      };
+      const updated = [...loadChat(point.id), reply];
+      saveChat(point.id, updated);
+      setMessages(updated);
+      toast(`Ново съобщение от ${point.owner}`, {
+        description: reply.text,
+        icon: <Bell className="w-4 h-4" />,
+      });
+    }, 1400 + Math.random() * 1200);
+  };
+
+  const openChat = () => setView("chat");
 
   const filtered = useMemo(
     () =>
@@ -240,26 +321,7 @@ export const DonationMap = () => {
                 position={[p.lat, p.lng]}
                 icon={makeIcon(p.type)}
                 eventHandlers={{ click: () => setSelected(p) }}
-              >
-                <Popup>
-                  <div className="space-y-1 min-w-[180px]">
-                    <Badge
-                      style={{ background: TYPE_META[p.type].color }}
-                      className="text-white border-0"
-                    >
-                      {TYPE_META[p.type].label}
-                    </Badge>
-                    <div className="font-bold text-base mt-1">{p.title}</div>
-                    <Button
-                      size="sm"
-                      className="w-full mt-2 bg-gradient-primary"
-                      onClick={() => setSelected(p)}
-                    >
-                      Виж детайли
-                    </Button>
-                  </div>
-                </Popup>
-              </Marker>
+              />
             ))}
           </MapContainer>
         </Card>
@@ -267,9 +329,9 @@ export const DonationMap = () => {
 
       {/* Details Sheet */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-md p-0 overflow-y-auto">
-          {selected && (
-            <div>
+        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col h-full">
+          {selected && view === "details" && (
+            <div className="overflow-y-auto">
               <div className="relative">
                 <img
                   src={selected.image}
@@ -336,21 +398,20 @@ export const DonationMap = () => {
                 <div className="space-y-2 pt-2">
                   <Button
                     className="w-full bg-gradient-primary hover:opacity-90 shadow-soft h-12 text-base"
-                    onClick={() =>
-                      toast({
-                        title: "Чат стартиран",
-                        description: `Изпращаме съобщение до ${selected.owner}.`,
-                      })
-                    }
+                    onClick={openChat}
                   >
                     <MessageCircle className="w-5 h-5" /> Започни чат
+                    {messages.length > 0 && (
+                      <Badge className="ml-2 bg-background/20 text-primary-foreground border-0">
+                        {messages.length}
+                      </Badge>
+                    )}
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full h-12 text-base border-2"
                     onClick={() =>
-                      toast({
-                        title: "Заявка изпратена",
+                      toast("Заявка изпратена", {
                         description: "Ще получиш телефон за връзка след одобрение.",
                       })
                     }
@@ -358,6 +419,107 @@ export const DonationMap = () => {
                     <Phone className="w-5 h-5" /> Поискай телефон
                   </Button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {selected && view === "chat" && (
+            <div className="flex flex-col h-full">
+              <div className="flex items-center gap-3 p-4 border-b bg-gradient-hero">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setView("details")}
+                  className="shrink-0"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <div className="w-10 h-10 rounded-full bg-gradient-primary grid place-items-center shrink-0">
+                  <User className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm truncate">{selected.owner}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {selected.title}
+                  </div>
+                </div>
+                <Badge
+                  style={{ background: TYPE_META[selected.type].color }}
+                  className="text-white border-0 shrink-0"
+                >
+                  {TYPE_META[selected.type].icon}
+                </Badge>
+              </div>
+
+              <ScrollArea className="flex-1 p-4">
+                {messages.length === 0 ? (
+                  <div className="h-full grid place-items-center text-center py-16">
+                    <div>
+                      <div className="w-16 h-16 mx-auto rounded-full bg-muted grid place-items-center mb-3">
+                        <MessageCircle className="w-7 h-7 text-muted-foreground" />
+                      </div>
+                      <div className="font-bold mb-1">Започни разговора</div>
+                      <div className="text-sm text-muted-foreground max-w-xs">
+                        Поздрави {selected.owner} и попитай за вещта.
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {messages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`flex ${m.from === "me" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-2 shadow-soft ${
+                            m.from === "me"
+                              ? "bg-gradient-primary text-primary-foreground rounded-br-sm"
+                              : "bg-muted text-foreground rounded-bl-sm"
+                          }`}
+                        >
+                          <div className="text-sm whitespace-pre-wrap break-words">
+                            {m.text}
+                          </div>
+                          <div
+                            className={`flex items-center gap-1 text-[10px] mt-1 ${
+                              m.from === "me"
+                                ? "text-primary-foreground/80 justify-end"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {formatTime(m.ts)}
+                            {m.from === "me" && <CheckCheck className="w-3 h-3" />}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={scrollEndRef} />
+                  </div>
+                )}
+              </ScrollArea>
+
+              <div className="p-3 border-t bg-background flex items-center gap-2">
+                <Input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder="Напиши съобщение…"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={!draft.trim()}
+                  className="bg-gradient-primary shrink-0"
+                  size="icon"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           )}
