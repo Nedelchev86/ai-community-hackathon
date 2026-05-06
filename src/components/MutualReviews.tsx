@@ -8,79 +8,12 @@ import {
 } from "@/components/ui/dialog";
 import { Star, ArrowLeftRight, CheckCircle2, Clock, Quote, ThumbsUp, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-type Role = "donor" | "receiver";
-
-type Exchange = {
-  id: string;
-  item: string;
-  category: string;
-  partnerName: string;
-  partnerAvatar: string;
-  myRole: Role;
-  completedAgo: string;
-  myReview?: { rating: number; text: string; tags: string[] };
-  partnerReview?: { rating: number; text: string; tags: string[]; ago: string };
-};
-
-const TAGS_DONOR = ["Точен", "Любезен", "Бързо взе вещта", "Добра комуникация", "С благодарност"];
-const TAGS_RECEIVER = ["Перфектно състояние", "Точно описание", "Лесна среща", "Топло отношение", "Препоръчвам"];
-
-const INITIAL: Exchange[] = [
-  {
-    id: "ex1",
-    item: "Детско колело 16\"",
-    category: "Спорт",
-    partnerName: "Мария Г.",
-    partnerAvatar: "М",
-    myRole: "donor",
-    completedAgo: "вчера",
-    partnerReview: {
-      rating: 5,
-      text: "Колелото е като ново! Синът ми е щастлив. Благодаря от сърце 💚",
-      tags: ["Перфектно състояние", "Топло отношение"],
-      ago: "преди 4ч",
-    },
-  },
-  {
-    id: "ex2",
-    item: "Комплект учебници 5. клас",
-    category: "Книги",
-    partnerName: "Иван П.",
-    partnerAvatar: "И",
-    myRole: "receiver",
-    completedAgo: "преди 3 дни",
-    partnerReview: {
-      rating: 5,
-      text: "Точна и любезна. Срещнахме се навреме, без проблеми.",
-      tags: ["Точен", "Любезен"],
-      ago: "преди 2д",
-    },
-  },
-  {
-    id: "ex3",
-    item: "Зимно яке, ръст 140",
-    category: "Дрехи",
-    partnerName: "Елена С.",
-    partnerAvatar: "Е",
-    myRole: "donor",
-    completedAgo: "преди седмица",
-    myReview: {
-      rating: 5,
-      text: "Много мила. Дойде точно навреме.",
-      tags: ["Точен", "Любезен"],
-    },
-    partnerReview: {
-      rating: 5,
-      text: "Якето е почти ново, благодаря! Препоръчвам дарителя.",
-      tags: ["Перфектно състояние", "Препоръчвам"],
-      ago: "преди 6д",
-    },
-  },
-];
+import {
+  useExchanges, reviewsStore, TAGS_DONOR, TAGS_RECEIVER,
+} from "@/lib/reviewsStore";
 
 export const MutualReviews = () => {
-  const [exchanges, setExchanges] = useState<Exchange[]>(INITIAL);
+  const exchanges = useExchanges();
   const [openId, setOpenId] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
   const [hover, setHover] = useState(0);
@@ -119,11 +52,11 @@ export const MutualReviews = () => {
       toast({ title: "Добави кратък коментар", description: "Поне 5 символа.", variant: "destructive" });
       return;
     }
-    setExchanges((arr) =>
-      arr.map((e) =>
-        e.id === open.id ? { ...e, myReview: { rating, text: text.trim().slice(0, 280), tags: picked } } : e,
-      ),
-    );
+    reviewsStore.setMyReview(open.id, {
+      rating,
+      text: text.trim().slice(0, 280),
+      tags: picked,
+    });
     toast({
       title: "Благодарим за отзива! ⭐",
       description: `Оценката ти за ${open.partnerName} е изпратена.`,
