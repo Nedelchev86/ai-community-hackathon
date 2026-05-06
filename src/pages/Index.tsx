@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import heroImg from "@/assets/hero-donate.jpg";
 import DonationMap from "@/components/DonationMap";
 import Gamification from "@/components/Gamification";
+import MutualReviews from "@/components/MutualReviews";
 
 const Index = () => {
   return (
@@ -21,6 +22,7 @@ const Index = () => {
             <a href="#how" className="hover:text-foreground transition-smooth">Как работи</a>
             <a href="#map" className="hover:text-foreground transition-smooth">Карта</a>
             <a href="#trust" className="hover:text-foreground transition-smooth">Доверие</a>
+            <a href="#reviews" className="hover:text-foreground transition-smooth">Отзиви</a>
             <a href="#impact" className="hover:text-foreground transition-smooth">Ефект</a>
             <a href="#community" className="hover:text-foreground transition-smooth">Общност</a>
           </nav>
@@ -117,6 +119,8 @@ const Index = () => {
       <DonationMap />
 
       <Gamification />
+
+      <MutualReviews />
 
       {/* Impact */}
       <section id="impact" className="bg-gradient-hero py-20 lg:py-28">
