@@ -1,4 +1,5 @@
 import { Heart, PackagePlus, Search, MapPin, MessageCircle, Leaf, Users, Recycle, Sparkles, ArrowRight, Star } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import heroImg from "@/assets/hero-donate.jpg";
@@ -25,6 +26,7 @@ const Index = () => {
             <a href="#reviews" className="hover:text-foreground transition-smooth">Отзиви</a>
             <a href="#impact" className="hover:text-foreground transition-smooth">Ефект</a>
             <a href="#community" className="hover:text-foreground transition-smooth">Общност</a>
+            <Link to="/profile" className="hover:text-foreground transition-smooth">Профил</Link>
           </nav>
           <Button variant="default" className="bg-gradient-primary hover:opacity-90 shadow-soft">
             Започни
