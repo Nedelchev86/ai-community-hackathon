@@ -71,6 +71,11 @@ const Settings = () => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Снимката е твърде голяма. Максималният размер е 5MB.");
+            return;
+        }
+
         const reader = new FileReader();
         reader.onloadend = () => {
             setProfileData({ ...profileData, avatarUrl: reader.result as string });
@@ -107,7 +112,7 @@ const Settings = () => {
                                     </label>
                                     <input id="avatar-upload-settings" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                                 </div>
-                                <p className="text-xs text-muted-foreground max-w-[120px] text-center">Квадратна снимка, до 1MB</p>
+                                <p className="text-xs text-muted-foreground max-w-[120px] text-center">Квадратна снимка, до 5MB</p>
                             </div>
 
                             <div className="flex-1 w-full space-y-6">

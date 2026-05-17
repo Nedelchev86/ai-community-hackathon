@@ -39,7 +39,7 @@ export function Header() {
                     <Link to="/partners" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-all">
                         Партньори
                     </Link>
-                    <a href="/#heroes" className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-full transition-all flex items-center gap-1">
+                    <a href="/heroes" className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-full transition-all flex items-center gap-1">
                         <Star className="w-4 h-4 fill-primary" /> Герои
                     </a>
                 </nav>

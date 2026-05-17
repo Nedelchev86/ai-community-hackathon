@@ -3,7 +3,7 @@ import {Link} from "react-router-dom";
 import {Card} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
-import {Star, Package, Quote, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info} from "lucide-react";
+import {Star, Package, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info} from "lucide-react";
 import {useAuth} from "@/contexts/AuthContext";
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter} from "@/components/ui/dialog";
 import {Input} from "@/components/ui/input";
@@ -478,37 +478,7 @@ const Profile = () => {
                 </Dialog>
 
                 <EcoCalculator />
-                <Gamification />
-
-                <div>
-                    <h2 className="text-2xl font-bold mb-4">Отзиви за теб</h2>
-                    <div className="space-y-3">
-                        {myReviews.length === 0 && <Card className="p-6 border-2 text-center text-muted-foreground">Все още няма отзиви.</Card>}
-                        {myReviews.map((r, i) => (
-                            <Card key={i} className="p-6 border-2 overflow-hidden">
-                                <div className="flex flex-col sm:flex-row items-start gap-4">
-                                    {r.imageUrl && (
-                                        <div className="w-full sm:w-32 h-32 shrink-0 bg-muted/30">
-                                            <img src={r.imageUrl} alt="Review" className="w-full h-full object-cover rounded-md border" />
-                                        </div>
-                                    )}
-                                    <div className="flex-1 w-full pt-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Quote className="w-4 h-4 text-primary opacity-50 shrink-0" />
-                                            <div className="flex">
-                                                {[1, 2, 3, 4, 5].map((i) => (
-                                                    <Star key={i} className={`w-4 h-4 ${i <= r.rating ? "fill-primary text-primary" : "text-muted"}`} />
-                                                ))}
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">от {r.reviewer?.name} (За: {r.exchange?.donation?.title})</span>
-                                        </div>
-                                        {r.comment && <p className="text-sm mb-1 pl-6">{r.comment}</p>}
-                                    </div>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
+                <Gamification reviews={myReviews} donationsCount={myDonations.length} />
             </main>
         </div>
     );

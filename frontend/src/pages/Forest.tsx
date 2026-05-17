@@ -1,10 +1,12 @@
-import {useState, useEffect, useRef} from "react";
-import {Link} from "react-router-dom";
+import {useState, useEffect, useCallback} from "react";
 import {motion, AnimatePresence} from "framer-motion";
-import {ArrowLeft, Sparkles, Trees, Sprout, Flower2, Heart, Gift, Users, ShieldAlert, Cloud} from "lucide-react";
+import {Sparkles, Trees, Sprout, Flower2, Heart, Gift, Clock} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {Card} from "@/components/ui/card";
 import {toast} from "sonner";
+import {MapContainer, TileLayer, Marker} from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 // Видове растения в гората
 type FloraType = "tree" | "sprout" | "flower" | "love";
@@ -12,185 +14,201 @@ type FloraType = "tree" | "sprout" | "flower" | "love";
 interface FloraProps {
     id: string;
     type: FloraType;
-    x: number; // 0-100%
-    y: number; // 0-100%
+    lat: number;
+    lng: number;
     scale: number;
-    zIndex: number;
 }
 
-const LIVE_EVENTS = [
-    {text: "Александър дари дрехи", type: "tree"},
-    {text: "Мария спаси 10 порции храна", type: "flower"},
-    {text: "Екип от 5 човека чисти плажа", type: "tree"},
-    {text: "Иван поправи стар телефон", type: "sprout"},
-    {text: "Елена дари време за превод", type: "love"},
+const BG_CITIES = [
+    {name: "София", lat: 42.6977, lng: 23.3219},
+    {name: "Пловдив", lat: 42.1354, lng: 24.7453},
+    {name: "Варна", lat: 43.2141, lng: 27.9147},
+    {name: "Бургас", lat: 42.5048, lng: 27.4626},
+    {name: "Русе", lat: 43.8486, lng: 25.9656},
+    {name: "Стара Загора", lat: 42.4258, lng: 25.6345},
+    {name: "Плевен", lat: 43.4165, lng: 24.6253},
+    {name: "Велико Търново", lat: 43.0757, lng: 25.6172},
+    {name: "Благоевград", lat: 42.0209, lng: 23.0943},
+    {name: "Шумен", lat: 43.2712, lng: 26.9361},
+    {name: "Хасково", lat: 41.9344, lng: 25.5554},
+    {name: "Сливен", lat: 42.6817, lng: 26.3229},
+    {name: "Добрич", lat: 43.5726, lng: 27.8273},
+    {name: "Пазарджик", lat: 42.1939, lng: 24.3333},
+    {name: "Перник", lat: 42.6051, lng: 23.0312},
+    {name: "Ямбол", lat: 42.4842, lng: 26.5035},
+    {name: "Враца", lat: 43.2045, lng: 23.5517},
+    {name: "Кърджали", lat: 41.6420, lng: 25.3688},
+    {name: "Габрово", lat: 42.8742, lng: 25.3186},
+    {name: "Видин", lat: 43.9902, lng: 22.8778},
+    {name: "Смолян", lat: 41.5744, lng: 24.7120},
 ];
+
+const LIVE_EVENTS = [
+    {text: "Александър от София дари дрехи", type: "tree"},
+    {text: "Мария от Варна спаси 10 порции храна", type: "flower"},
+    {text: "Екип от Бургас чисти плажа", type: "tree"},
+    {text: "Иван от Пловдив поправи стар лаптоп", type: "sprout"},
+    {text: "Елена от Русе дари време за превод", type: "love"},
+    {text: "Петър от Стара Загора дари мебели", type: "tree"},
+    {text: "Николай от Плевен спаси книги", type: "tree"},
+    {text: "Георги от Велико Търново дари техника", type: "tree"},
+    {text: "Десислава от Благоевград спаси храна", type: "flower"},
+    {text: "Стефан от Смолян дари дърва", type: "tree"},
+    {text: "Лилия от Габрово дари дрехи", type: "tree"},
+];
+
+const makeFloraIcon = (type: FloraType, scale: number) => {
+    let icon = "🌲";
+    if (type === "sprout") icon = "🌱";
+    if (type === "flower") icon = "🌸";
+    if (type === "love") icon = "❤️";
+
+    const size = 28 * scale;
+    
+    return L.divIcon({
+        className: "flora-marker-icon",
+        html: `<div style="font-size: ${size}px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); cursor: default; transition: all 0.5s ease-out;">${icon}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size],
+    });
+};
 
 export default function InteractiveForest() {
     const [flora, setFlora] = useState<FloraProps[]>([]);
     const [totalImpact, setTotalImpact] = useState(3421);
-    const [actionText, setActionText] = useState("Добре дошли в Гората на Пулсът на Доброто!");
+    const [actionText, setActionText] = useState("Добре дошли в Дигиталната Гора на България!");
 
-    const createFloraElement = (id: string, currentCount: number): FloraProps => {
-        // Как расте гората: започва от центъра и се разширява лека-полека навън
-        const maxRadius = Math.min(15 + currentCount * 0.6, 40); // Максималният радиус расте с броя дървета
-        const angle = Math.random() * Math.PI * 2;
-        // Квадратен корен за по-естествено струпване (повече близо до центъра)
-        const radius = maxRadius * Math.sqrt(Math.random());
-
-        let x = 50 + Math.cos(angle) * radius;
-        let y = 55 + Math.sin(angle) * (radius * 0.6); // 0.6 смачкваме по Y заради перспективата
-
-        // Ограничаваме до границите
-        x = Math.max(5, Math.min(95, x));
-        y = Math.max(15, Math.min(90, y));
-
-        const scale = 0.5 + (y / 100) * 1.2;
+    const createFloraElement = useCallback((id: string): FloraProps => {
+        // Избираме случаен град за база
+        const city = BG_CITIES[Math.floor(Math.random() * BG_CITIES.length)];
+        
+        // Малък jitter (около 15-20км), за да стоят строго в България
+        const lat = city.lat + (Math.random() - 0.5) * 0.15;
+        const lng = city.lng + (Math.random() - 0.5) * 0.25;
+        
+        const scale = 0.8 + Math.random() * 0.7;
         const types: FloraType[] = ["tree", "tree", "sprout", "tree", "flower"];
 
         return {
             id,
             type: types[Math.floor(Math.random() * types.length)],
-            x,
-            y,
+            lat,
+            lng,
             scale,
-            zIndex: Math.floor(y * 100),
         };
-    };
+    }, []);
 
     // Генератор на начална гора
     useEffect(() => {
-        const initialFlora: FloraProps[] = Array.from({length: 40}).map((_, i) => createFloraElement(`init-${i}`, i));
-        initialFlora.sort((a, b) => a.y - b.y);
+        const initialFlora: FloraProps[] = Array.from({length: 45}).map((_, i) => createFloraElement(`init-${i}`));
         setFlora(initialFlora);
-    }, []);
+    }, [createFloraElement]);
 
     // Симулация на "Жива общност"
     useEffect(() => {
         const interval = setInterval(() => {
             setFlora((prev) => {
-                const newFlora = createFloraElement(`live-${Date.now()}`, prev.length);
+                const newFlora = createFloraElement(`live-${Date.now()}`);
                 const randomEvent = LIVE_EVENTS[Math.floor(Math.random() * LIVE_EVENTS.length)];
                 newFlora.type = randomEvent.type as FloraType;
 
                 setActionText(`${randomEvent.text}!`);
                 setTotalImpact((t) => t + 1);
 
-                return [...prev, newFlora].sort((a, b) => a.y - b.y);
+                return [...prev, newFlora].slice(-200); 
             });
-        }, 4500);
+        }, 6000);
         return () => clearInterval(interval);
-    }, []);
+    }, [createFloraElement]);
 
     const handleSimulateDonation = () => {
         setFlora((prev) => {
-            const newFlora = createFloraElement(`manual-${Date.now()}`, prev.length);
+            const newFlora = createFloraElement(`manual-${Date.now()}`);
             newFlora.type = "love";
-            return [...prev, newFlora].sort((a, b) => a.y - b.y);
+            return [...prev, newFlora];
         });
         setTotalImpact((prev) => prev + 1);
-        setActionText("Ти току-що допринесе за гората!");
+        setActionText("Ти добави частица добро към гората!");
         toast.success("Успешно действие", {
-            description: "Твоето дръвче е посято на картата. Благодаря!",
+            description: "Твоят символ е поставен на картата. Благодаря!",
         });
-    };
-
-    const renderFlora = (item: FloraProps) => {
-        switch (item.type) {
-            case "tree":
-                return <Trees className="text-emerald-700 drop-shadow-md" size={48} />;
-            case "sprout":
-                return <Sprout className="text-green-500 drop-shadow-md" size={32} />;
-            case "flower":
-                return <Flower2 className="text-pink-500 drop-shadow-sm" size={28} />;
-            case "love":
-                return <Heart className="text-rose-500 drop-shadow-md fill-rose-500" size={36} />;
-            default:
-                return null;
-        }
     };
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
             <main className="flex-1 container py-8 flex flex-col gap-6">
                 {/* Header Stats */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/30 p-6 rounded-2xl border border-border">
-                    <div>
-                        <h1 className="text-3xl font-black bg-gradient-primary bg-clip-text text-transparent mb-2">Живата гора на Пулсът на Доброто</h1>
-                        <p className="text-muted-foreground">Всяко посадено тук дръвче е реално добро дело, направено в платформата.</p>
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-white dark:bg-card p-8 rounded-[2rem] border-2 border-border shadow-soft">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm uppercase tracking-widest">
+                            <Trees className="w-4 h-4" /> Еко система
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tight text-foreground">Живата карта на България</h1>
+                        <p className="text-muted-foreground text-lg">Виж как всяко добро дело променя картата на страната ни в реално време.</p>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <div className="text-center">
-                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-1">Спасени ресурси</p>
+                    <div className="flex items-center gap-8">
+                        <div className="text-center px-6 py-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-tighter mb-1">Засадени добрини</p>
                             <p className="text-4xl font-black text-emerald-600">{totalImpact.toLocaleString()}</p>
                         </div>
-                        <Button onClick={handleSimulateDonation} className="bg-emerald-600 hover:bg-emerald-700 h-14 rounded-full px-6 shadow-lg shadow-emerald-500/20">
+                        <Button onClick={handleSimulateDonation} size="lg" className="bg-gradient-primary hover:opacity-90 h-16 rounded-full px-8 shadow-glow text-lg font-bold">
                             <Gift className="w-5 h-5 mr-2" /> Добави добрина
                         </Button>
                     </div>
                 </div>
 
-                {/* The Live Interactive Canvas / Map */}
-                <Card className="flex-1 min-h-[60vh] relative overflow-hidden bg-[#f0ebd8] border-4 border-white shadow-xl rounded-3xl isolate">
-                    {/* Topographical Map Background */}
-                    <svg className="absolute inset-0 w-full h-full text-emerald-900/5 opacity-50" viewBox="0 0 1000 600" preserveAspectRatio="none" fill="none" stroke="currentColor" strokeWidth="2">
-                        {/* Abstract map contour lines */}
-                        <path d="M-100,200 Q150,100 300,250 T700,100 T1100,300" />
-                        <path d="M-100,250 Q150,150 300,300 T700,150 T1100,350" />
-                        <path d="M-100,300 Q150,200 300,350 T700,200 T1100,400" />
-                        <path d="M-100,350 Q150,250 300,400 T700,250 T1100,450" />
-
-                        {/* River / Water path */}
-                        <path d="M200,0 Q150,150 300,300 T400,600" stroke="#7ed3fc" strokeWidth="40" strokeLinecap="round" className="opacity-40" />
-                        <path d="M800,0 Q850,200 700,350 T650,600" stroke="#7ed3fc" strokeWidth="20" strokeLinecap="round" className="opacity-30" />
-                    </svg>
-
-                    {/* Compass / Map Decoration */}
-                    <div className="absolute top-6 left-6 opacity-60 pointer-events-none z-0">
-                        <div className="w-16 h-16 border-4 border-emerald-900/20 rounded-full flex items-center justify-center relative">
-                            <div className="absolute w-1 h-8 bg-emerald-900/30 -top-2"></div>
-                            <div className="absolute w-8 h-1 bg-emerald-900/30 -right-2"></div>
-                            <div className="text-emerald-900/40 font-bold text-xs absolute -top-6">С</div>
-                        </div>
-                    </div>
+                {/* The Map Canvas */}
+                <Card className="relative overflow-hidden bg-muted/20 border-2 border-border shadow-soft rounded-[3rem] h-[650px]">
+                    <MapContainer 
+                        center={[42.7, 25.5]} 
+                        zoom={7} 
+                        scrollWheelZoom={true} 
+                        style={{ height: "650px", width: "100%", background: "#f8fafc", zIndex: 1 }}
+                        zoomControl={false}
+                    >
+                        <TileLayer 
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' 
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+                        />
+                        
+                        {flora.map((item) => (
+                            <Marker 
+                                key={item.id} 
+                                position={[item.lat, item.lng]} 
+                                icon={makeFloraIcon(item.type, item.scale)}
+                            />
+                        ))}
+                    </MapContainer>
 
                     {/* Live Action Ticker Overlay */}
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100]">
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-md px-4">
                         <AnimatePresence mode="wait">
-                            <motion.div key={actionText} initial={{opacity: 0, y: -20, scale: 0.9}} animate={{opacity: 1, y: 0, scale: 1}} exit={{opacity: 0, y: 10, scale: 0.9}} className="bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-lg border border-emerald-100 flex items-center gap-3 text-emerald-800 font-semibold">
-                                <Sparkles className="w-4 h-4 text-emerald-500" />
+                            <motion.div key={actionText} initial={{opacity: 0, y: -20}} animate={{opacity: 1, y: 0}} exit={{opacity: 0, y: 10}} className="bg-white/95 dark:bg-black/80 backdrop-blur-xl px-8 py-4 rounded-full shadow-2xl border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-4 text-emerald-900 dark:text-emerald-100 font-bold text-center justify-center">
+                                <Sparkles className="w-5 h-5 text-emerald-500 animate-pulse" />
                                 {actionText}
                             </motion.div>
                         </AnimatePresence>
                     </div>
 
-                    {/* The Digital Forest Grid */}
-                    <div className="absolute inset-0 z-10 w-full h-full pointer-events-none">
-                        <AnimatePresence>
-                            {flora.map((item) => (
-                                <motion.div
-                                    key={item.id}
-                                    initial={{scale: 0, opacity: 0, y: 50}}
-                                    animate={{scale: item.scale, opacity: 1, y: 0}}
-                                    transition={{
-                                        type: "spring",
-                                        stiffness: 260,
-                                        damping: 20,
-                                        duration: 1,
-                                    }}
-                                    className="absolute origin-bottom transform-gpu"
-                                    style={{
-                                        left: `${item.x}%`,
-                                        top: `${item.y}%`,
-                                        zIndex: item.zIndex,
-                                        // Slightly offset center point so the footprint is accurate
-                                        transform: `translate(-50%, -100%) scale(${item.scale})`,
-                                    }}
-                                >
-                                    {renderFlora(item)}
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                    {/* Legend */}
+                    <div className="absolute bottom-8 left-8 z-[1000] space-y-2 bg-white/90 dark:bg-black/60 backdrop-blur-md p-5 rounded-2xl border border-white/50 dark:border-emerald-900/20 shadow-xl">
+                        <div className="flex items-center gap-3 text-xs font-bold text-emerald-900 dark:text-emerald-100">
+                            <span className="text-xl">🌲</span> Дарена вещ
+                        </div>
+                        <div className="flex items-center gap-3 text-xs font-bold text-emerald-900 dark:text-emerald-100">
+                            <span className="text-xl">🌸</span> Спасена храна
+                        </div>
+                        <div className="flex items-center gap-3 text-xs font-bold text-emerald-900 dark:text-emerald-100">
+                            <span className="text-xl">❤️</span> Добро дело
+                        </div>
+                    </div>
+
+                    <div className="absolute bottom-8 right-8 z-[1000] text-right hidden sm:block pointer-events-none">
+                        <div className="bg-background/90 backdrop-blur-sm px-4 py-2 rounded-xl border shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-900/60 dark:text-emerald-500/60 flex items-center gap-2">
+                                <Clock className="w-3 h-3" /> Световно време: {new Date().toLocaleTimeString('bg-BG')}
+                            </p>
+                        </div>
                     </div>
                 </Card>
             </main>

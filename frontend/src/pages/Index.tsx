@@ -1,8 +1,8 @@
-import {Heart, PackagePlus, Search, MapPin, MessageCircle, Leaf, Users, Recycle, Sparkles, ArrowRight, Star, Menu, LogOut, Settings, User, Trophy, Medal} from "lucide-react";
+import {useEffect, useState} from "react";
+import {Heart, PackagePlus, Search, MapPin, MessageCircle, Leaf, Users, Recycle, Sparkles, ArrowRight, Star, Clock} from "lucide-react";
 import {Link} from "react-router-dom";
 import {Button} from "@/components/ui/button";
 import {Card} from "@/components/ui/card";
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {HoverCard, HoverCardContent, HoverCardTrigger} from "@/components/ui/hover-card";
 import {Badge} from "@/components/ui/badge";
@@ -11,24 +11,30 @@ import heroImg from "@/assets/hero-donate.jpg";
 import MutualReviews from "@/components/MutualReviews";
 import GlobalImpact from "@/components/GlobalImpact";
 import AiMatchmaker from "@/components/AiMatchmaker";
-
-const topUsers = [
-    {
-        id: 1,
-        name: "Венета Кирилова",
-        avatar: "https://softuni.circle.so/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaHBCT3ZzNXdrPSIsImV4cCI6bnVsbCwicHVyIjoiYmxvYl9pZCJ9fQ==--b7e3ea9823418a1fe39751d76860e5d7eef437ff/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaDdDRG9MWm05eWJXRjBTU0lJYW5CbkJqb0dSVlE2RkhKbGMybDZaVjkwYjE5c2FXMXBkRnNIYVFJc0FXa0NMQUU2Q25OaGRtVnlld1k2Q25OMGNtbHdWQT09IiwiZXhwIjpudWxsLCJwdXIiOiJ2YXJpYXRpb24ifX0=--67365f61f655fbc86c65a51f2e9992ab818c41cd/IMG_20251124_010930_135.jpg?w=150&h=150&fit=crop&crop=face",
-        items: 142,
-        badge: "Златно сърце",
-        role: "Легенда",
-        color: "from-amber-400 to-orange-500",
-    },
-    {id: 2, name: "Иван К.", avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop&crop=face", items: 89, badge: "Еко герой", role: "Супер дарител", color: "from-emerald-400 to-green-600"},
-    {id: 3, name: "Мария С.", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face", items: 64, badge: "Вдъхновител", role: "Ментор", color: "from-blue-400 to-indigo-500"},
-    {id: 4, name: "Петър В.", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face", items: 45, badge: "Посланик", role: "Активен", color: "from-purple-400 to-pink-500"},
-    {id: 5, name: "Анна М.", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face", items: 31, badge: "Нова надежда", role: "Дарител", color: "from-rose-400 to-red-500"},
-];
+import TopDonors from "@/components/TopDonors";
+import { API_BASE } from "@/lib/api";
 
 const Index = () => {
+    const [recentUsers, setRecentUsers] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetch(`${API_BASE}/users/recent?limit=5`)
+            .then(res => res.json())
+            .then(data => setRecentUsers(Array.isArray(data) ? data : []))
+            .catch(console.error);
+    }, []);
+
+    const getUserColor = (index: number) => {
+        const colors = [
+            "from-amber-400 to-orange-500",
+            "from-emerald-400 to-green-600",
+            "from-blue-400 to-indigo-500",
+            "from-purple-400 to-pink-500",
+            "from-rose-400 to-red-500",
+        ];
+        return colors[index % colors.length];
+    };
+
     return (
         <div className="min-h-screen bg-background overflow-x-hidden">
             {/* Hero */}
@@ -61,12 +67,16 @@ const Index = () => {
                         </h1>
                         <p className="text-lg text-muted-foreground max-w-lg">Платформа, която свързва дарители с хора в нужда. По-малко отпадъци, повече солидарност — започваме от Бургас.</p>
                         <div className="flex flex-wrap gap-3 pt-2">
-                            <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-soft text-base h-12 px-6">
-                                <PackagePlus className="w-5 h-5" /> Дарявам вещ
-                            </Button>
-                            <Button size="lg" variant="outline" className="text-base h-12 px-6 border-2">
-                                <Search className="w-5 h-5" /> Търся вещ
-                            </Button>
+                            <Link to="/donate">
+                                <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-soft text-base h-12 px-6">
+                                    <PackagePlus className="w-5 h-5" /> Дарявам вещ
+                                </Button>
+                            </Link>
+                            <Link to="/need">
+                                <Button size="lg" variant="outline" className="text-base h-12 px-6 border-2">
+                                    <Search className="w-5 h-5" /> Търся вещ
+                                </Button>
+                            </Link>
                         </div>
                         <div className="flex items-center gap-6 pt-4 text-sm text-muted-foreground">
                             <div className="flex -space-x-2">
@@ -80,7 +90,7 @@ const Index = () => {
 
                     <motion.div initial={{opacity: 0, scale: 0.9}} animate={{opacity: 1, scale: 1}} transition={{duration: 0.6, delay: 0.4}} className="relative">
                         <div className="absolute inset-0 bg-gradient-primary rounded-3xl blur-2xl opacity-30" />
-                        <img src={heroImg} alt="Ръце, които си подават вещ — символ на дарителство" width={1536} height={1024} className="relative rounded-3xl shadow-soft w-full" />
+                        <img src={heroImg} alt="Giving" width={1536} height={1024} className="relative rounded-3xl shadow-soft w-full" />
                         <Card className="absolute -bottom-22 -left-6 p-4 shadow-soft border-2 hidden sm:block">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-accent grid place-items-center">
@@ -125,160 +135,111 @@ const Index = () => {
                 </div>
             </section>
 
-            {/* Heroes Section on Index */}
+            {/* Heroes Section on Index - Combined Recent & Top */}
             <section id="heroes" className="bg-muted/30 py-20 lg:py-28 relative overflow-hidden">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10" />
                 <div className="container relative z-10">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 text-accent-foreground mb-4">
-                            <Trophy className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
-                            <span className="text-sm font-medium">Топ потребители</span>
+                    <div className="grid lg:grid-cols-2 gap-12 items-start">
+                        {/* Recent Users Side */}
+                        <div className="space-y-12">
+                            <div>
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 text-accent-foreground mb-4">
+                                    <Clock className="w-4 h-4 text-primary" />
+                                    <span className="text-sm font-medium uppercase tracking-wider">Нови герои</span>
+                                </div>
+                                <h2 className="text-4xl lg:text-5xl font-black mb-4 tracking-tight">Сърцето на общността</h2>
+                                <p className="text-muted-foreground text-lg leading-relaxed max-w-lg">Добре дошли на нашите най-нови членове! Всеки нов герой прави света малко по-добър.</p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-6 lg:gap-8 justify-start">
+                                {recentUsers.map((user, index) => (
+                                    <HoverCard key={user.id}>
+                                        <HoverCardTrigger asChild>
+                                            <button className="relative group cursor-pointer focus:outline-none">
+                                                <div className={`absolute -inset-2 rounded-full bg-gradient-to-tr ${getUserColor(index)} opacity-0 group-hover:opacity-100 blur-md transition-all duration-500`} />
+                                                <Avatar className="relative w-20 h-20 lg:w-28 lg:h-28 border-4 border-background shadow-xl transition-transform duration-300 group-hover:scale-105 group-hover:-translate-y-2">
+                                                    <AvatarImage src={user.avatarUrl} alt={user.name} className="object-cover" />
+                                                    <AvatarFallback className="text-xl font-bold">
+                                                        {(user.name || "U")
+                                                            .split(" ")
+                                                            .map((n: string) => n[0])
+                                                            .join("")}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full grid place-items-center shadow-lg border-2 border-background group-hover:scale-110 transition-transform duration-300 z-10 bg-gradient-to-br ${getUserColor(index)}`}>
+                                                    <Star className="w-4 h-4 text-white" fill="currentColor" strokeWidth={1} />
+                                                </div>
+                                            </button>
+                                        </HoverCardTrigger>
+                                        <HoverCardContent className="w-72 p-0 overflow-hidden shadow-2xl border-border/50 rounded-xl z-50" sideOffset={15}>
+                                            <div className={`h-2 bg-gradient-to-r ${getUserColor(index)}`} />
+                                            <div className="p-4">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <h4 className="font-bold">{user.name || "Анонимен"}</h4>
+                                                        <p className="text-xs text-muted-foreground">{user.city || "България"}</p>
+                                                    </div>
+                                                    <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] border-0 px-2 py-0">НОВ</Badge>
+                                                </div>
+                                                <div className="flex items-center gap-4 text-xs">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-foreground">{user._count?.donations || 0}</span>
+                                                        <span className="text-muted-foreground text-[10px] uppercase">Обяви</span>
+                                                    </div>
+                                                    <div className="h-6 w-px bg-border" />
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-foreground">{new Date(user.createdAt).toLocaleDateString('bg-BG')}</span>
+                                                        <span className="text-muted-foreground text-[10px] uppercase tracking-tighter">Присъедини се</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </HoverCardContent>
+                                    </HoverCard>
+                                ))}
+                            </div>
+
+                            <Link to="/heroes">
+                                <Button variant="outline" className="rounded-full shadow-soft hover:shadow-md transition-all group border-2 h-12 px-8">
+                                    Виж всички герои
+                                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                                </Button>
+                            </Link>
                         </div>
-                        <h2 className="text-4xl lg:text-5xl font-bold mb-4">Сърцето на общността</h2>
-                        <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">Запознай се с хората, които правят най-голямата промяна. Те не просто даряват вещи, те подаряват надежда.</p>
-                        <Link to="/heroes">
-                            <Button variant="outline" className="rounded-full shadow-sm hover:shadow-md transition-all group">
-                                Виж цялата зала на славата
-                                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                            </Button>
-                        </Link>
-                    </div>
 
-                    <div className="flex flex-wrap justify-center gap-8 lg:gap-12">
-                        {topUsers.slice(0, 4).map((user) => (
-                            <HoverCard key={user.id}>
-                                <HoverCardTrigger asChild>
-                                    <button className="relative group cursor-pointer focus:outline-none">
-                                        <div className={`absolute -inset-2 rounded-full bg-gradient-to-tr ${user.color} opacity-0 group-hover:opacity-100 blur-md transition-all duration-500`} />
-                                        <Avatar className="relative w-24 h-24 lg:w-28 lg:h-28 border-4 border-background shadow-xl transition-transform duration-300 group-hover:scale-105 group-hover:-translate-y-2">
-                                            <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />
-                                            <AvatarFallback className="text-xl font-bold">
-                                                {user.name
-                                                    .split(" ")
-                                                    .map((n) => n[0])
-                                                    .join("")}
-                                            </AvatarFallback>
-                                        </Avatar>
-
-                                        {/* Mini badge icon directly on avatar */}
-                                        <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full grid place-items-center shadow-lg border-2 border-background group-hover:scale-110 transition-transform duration-300 z-10 bg-gradient-to-br ${user.color}`}>
-                                            <Medal className="w-4 h-4 text-white" fill="currentColor" strokeWidth={1} />
-                                        </div>
-                                    </button>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-80 p-0 overflow-hidden shadow-2xl border-border/50 rounded-xl z-50" sideOffset={15}>
-                                    <div className={`h-2 bg-gradient-to-r ${user.color}`} />
-                                    <div className="p-5">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <h4 className="text-lg font-bold">{user.name}</h4>
-                                                <p className="text-sm text-muted-foreground">{user.role}</p>
-                                            </div>
-                                            <Badge variant="secondary" className={`bg-gradient-to-r ${user.color} text-white border-0 shadow-sm`}>
-                                                {user.badge}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center gap-4 text-sm mt-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-2xl font-bold text-foreground">{user.items}</span>
-                                                <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Дарени вещи</span>
-                                            </div>
-                                            <div className="h-10 w-px bg-border" />
-                                            <div className="flex flex-col">
-                                                <span className="text-2xl font-bold text-foreground">{Math.floor(user.items * 2.5)}кг</span>
-                                                <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Спестен CO2</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </HoverCardContent>
-                            </HoverCard>
-                        ))}
+                        {/* Top Donors Side */}
+                        <div className="w-full h-full min-h-[400px]">
+                            <TopDonors />
+                        </div>
                     </div>
                 </div>
             </section>
 
             <GlobalImpact />
 
-            <MutualReviews />
+            <div className="container py-20">
+                <MutualReviews />
+            </div>
 
-            {/* Impact */}
-            <section id="impact" className="bg-gradient-hero py-20 lg:py-28">
-                <div className="container">
-                    <div className="grid lg:grid-cols-2 gap-12 items-center">
-                        <div>
-                            <h2 className="text-4xl lg:text-5xl font-bold mb-4">Ефект, който усещаш</h2>
-                            <p className="text-muted-foreground text-lg mb-8">Всяка дарена вещ е по-малко боклук, по-малко производство и едно семейство с повече усмивки.</p>
-                            <div className="grid grid-cols-3 gap-4">
-                                {[
-                                    {v: "2.3т", l: "спасени"},
-                                    {v: "840", l: "дарения"},
-                                    {v: "12", l: "квартала"},
-                                ].map((s, i) => (
-                                    <div key={i} className="text-center p-4 rounded-2xl bg-card border border-border shadow-soft">
-                                        <div className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">{s.v}</div>
-                                        <div className="text-xs text-muted-foreground mt-1">{s.l}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-4">
-                            {[
-                                {icon: Leaf, t: "Екология", d: "По-малко отпадъци, по-малко производство, по-чист град."},
-                                {icon: Users, t: "Социално", d: "Реална помощ за семейства, които имат нужда."},
-                                {icon: Recycle, t: "Кръгова икономика", d: "Втори, трети и пети живот на всяка вещ."},
-                                {icon: Heart, t: "Общност", d: "Съседи, които си помагат — отново."},
-                            ].map((c, i) => (
-                                <Card key={i} className="p-6 border-2 hover:shadow-soft transition-smooth">
-                                    <c.icon className="w-8 h-8 text-primary mb-3" />
-                                    <h3 className="font-bold mb-1">{c.t}</h3>
-                                    <p className="text-sm text-muted-foreground">{c.d}</p>
-                                </Card>
-                            ))}
+            {/* CTA */}
+            <section className="container py-20 lg:py-32">
+                <div className="bg-gradient-primary rounded-[3rem] p-10 lg:p-20 text-center text-primary-foreground relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                        <div className="absolute top-10 left-10 w-40 h-40 rounded-full border-8 border-white" />
+                        <div className="absolute bottom-10 right-10 w-60 h-60 rounded-full border-8 border-white" />
+                    </div>
+                    <div className="relative z-10 max-w-3xl mx-auto">
+                        <h2 className="text-4xl lg:text-6xl font-black mb-8 leading-tight">Готов ли си да станеш герой?</h2>
+                        <p className="text-xl opacity-90 mb-12 leading-relaxed">Всяка вещ, която дариш, разказва история и променя бъдещето. Започни днес!</p>
+                        <div className="flex flex-col sm:flex-row gap-6 justify-center">
+                            <Link to="/register">
+                                <Button size="lg" variant="secondary" className="h-16 px-12 text-xl font-bold rounded-full shadow-xl hover:scale-105 transition-all">
+                                    Регистрирай се безплатно
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </div>
             </section>
-
-            {/* Community CTA */}
-            <section id="community" className="container py-20 lg:py-28">
-                <Card className="relative overflow-hidden border-0 bg-gradient-primary p-12 lg:p-16 text-center shadow-glow">
-                    <div className="absolute inset-0 opacity-20">
-                        <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-primary-foreground/30 blur-2xl" />
-                        <div className="absolute bottom-10 right-10 w-40 h-40 rounded-full bg-accent/40 blur-2xl" />
-                    </div>
-                    <div className="relative max-w-2xl mx-auto text-primary-foreground">
-                        <Star className="w-12 h-12 mx-auto mb-4" fill="currentColor" />
-                        <h2 className="text-4xl lg:text-5xl font-bold mb-4">Стани част от движението</h2>
-                        <p className="text-lg opacity-90 mb-8">Започваме общност в Бургас. Дари първата си вещ или резервирай нещо, което ти трябва — без пари, само с добро.</p>
-                        <div className="flex flex-wrap gap-3 justify-center">
-                            <Button size="lg" variant="secondary" className="h-12 px-6 text-base bg-card text-foreground hover:bg-card/90">
-                                Присъедини се <ArrowRight className="w-4 h-4" />
-                            </Button>
-                            <Button size="lg" variant="outline" className="h-12 px-6 text-base bg-transparent border-2 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
-                                Подкрепи проекта
-                            </Button>
-                        </div>
-                    </div>
-                </Card>
-            </section>
-
-            {/* Footer */}
-            <footer className="border-t border-border">
-                <div className="container py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                        <Heart className="w-4 h-4 text-primary" fill="currentColor" />
-                        <span>Пулсът на Доброто· 2026</span>
-                    </div>
-                    <div className="flex gap-6">
-                        <a href="#" className="hover:text-foreground transition-smooth">
-                            Условия
-                        </a>
-                        <a href="#" className="hover:text-foreground transition-smooth">
-                            Контакти
-                        </a>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 };

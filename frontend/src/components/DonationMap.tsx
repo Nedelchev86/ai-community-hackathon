@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from "react";
-import {MapContainer, TileLayer, Marker, Circle, useMap} from "react-leaflet";
+import {MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {Card} from "@/components/ui/card";
@@ -11,12 +11,8 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/c
 import {Input} from "@/components/ui/input";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {toast} from "sonner";
-import {Shirt, Sofa, BookOpen, Cpu, Package, MapPin, Heart, Search, MessageCircle, Phone, Star, Clock, User, Send, ArrowLeft, Bell, CheckCheck, Apple, Wrench, Footprints, Gamepad2, HandHeart} from "lucide-react";
+import {Shirt, Sofa, BookOpen, Cpu, Package, MapPin, Heart, Search, MessageCircle, Phone, Star, Clock, User, Send, ArrowLeft, Bell, CheckCheck, Apple, Wrench, Footprints, Gamepad2, HandHeart, LocateFixed, Navigation, Loader2} from "lucide-react";
 import { API_BASE } from "@/lib/api";
-import imgClothes from "@/assets/item-clothes.jpg";
-import imgFurniture from "@/assets/item-furniture.jpg";
-import imgBooks from "@/assets/item-books.jpg";
-import imgTech from "@/assets/item-tech.jpg";
 import imgOther from "@/assets/item-other.jpg";
 
 type PointType = "donation" | "need" | "hub";
@@ -49,8 +45,6 @@ const CITIES = [
     {name: "Стара Загора", coords: [42.4258, 25.6345] as [number, number]},
     {name: "Плевен", coords: [43.4165, 24.6253] as [number, number]},
 ];
-
-const POINTS: MapPoint[] = [];
 
 const CATEGORIES: {value: Category | "all"; label: string; icon: any}[] = [
     {value: "all", label: "Всички", icon: Package},
@@ -87,6 +81,13 @@ const makeIcon = (type: PointType) =>
         popupAnchor: [0, -36],
     });
 
+const userPinIcon = L.divIcon({
+    className: "",
+    html: `<div style="background:hsl(210, 100%, 50%);width:40px;height:40px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;box-shadow:0 0 20px rgba(0,149,255,0.4);border:4px solid white;cursor:move;"><span style="transform:rotate(45deg);font-size:18px;">📍</span></div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+});
+
 const distKm = (a: [number, number], b: [number, number]) => {
     const R = 6371;
     const dLat = ((b[0] - a[0]) * Math.PI) / 180;
@@ -97,7 +98,18 @@ const distKm = (a: [number, number], b: [number, number]) => {
 
 const Recenter = ({center}: {center: [number, number]}) => {
     const map = useMap();
-    map.setView(center, map.getZoom());
+    useEffect(() => {
+        map.setView(center, map.getZoom());
+    }, [center, map]);
+    return null;
+};
+
+const MapEvents = ({onMapClick}: {onMapClick: (lat: number, lng: number) => void}) => {
+    useMapEvents({
+        click(e) {
+            onMapClick(e.latlng.lat, e.latlng.lng);
+        },
+    });
     return null;
 };
 
@@ -127,9 +139,10 @@ const formatTime = (ts: number) => {
 
 export const DonationMap = () => {
     const [donations, setDonations] = useState<MapPoint[]>([]);
+    const [isLoadingPoints, setIsLoadingPoints] = useState(true);
 
     useEffect(() => {
-        // Извличане на всички дарения от бекенда
+        setIsLoadingPoints(true);
         fetch(`${API_BASE}/donations`)
             .then((res) => res.json())
             .then((data) => {
@@ -147,13 +160,13 @@ export const DonationMap = () => {
                     postedAgo: new Date(d.createdAt).toLocaleDateString(),
                     image: d.imageUrl || imgOther,
                 }));
-
-                // Само реални данни от сървъра
                 setDonations(mappedPoints);
+                setIsLoadingPoints(false);
             })
             .catch((err) => {
                 console.error("Грешка при извличане:", err);
                 setDonations([]);
+                setIsLoadingPoints(false);
             });
     }, []);
 
@@ -169,6 +182,10 @@ export const DonationMap = () => {
     const [view, setView] = useState<"details" | "chat">("details");
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [draft, setDraft] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isSearching, setIsSearching] = useState(false);
+    const [isLocating, setIsLocating] = useState(false);
+    
     const replyTimer = useRef<number | null>(null);
     const scrollEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -180,6 +197,48 @@ export const DonationMap = () => {
     useEffect(() => {
         scrollEndRef.current?.scrollIntoView({behavior: "smooth"});
     }, [messages, view]);
+
+    const handleSearch = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!searchQuery.trim()) return;
+
+        setIsSearching(true);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ", Bulgaria")}&limit=1`);
+            const data = await res.json();
+            if (data && data.length > 0) {
+                const {lat, lon} = data[0];
+                setCenter([parseFloat(lat), parseFloat(lon)]);
+                toast.success(`Намерено: ${data[0].display_name}`);
+            } else {
+                toast.error("Не намерихме това място. Опитайте пак.");
+            }
+        } catch (err) {
+            toast.error("Грешка при търсенето.");
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleLocate = () => {
+        if (!navigator.geolocation) {
+            toast.error("Браузърът ви не поддържа геолокация.");
+            return;
+        }
+
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setCenter([pos.coords.latitude, pos.coords.longitude]);
+                setIsLocating(false);
+                toast.success("Вашата позиция е намерена!");
+            },
+            () => {
+                setIsLocating(false);
+                toast.error("Не успяхме да ви локализираме. Проверете настройките за достъп.");
+            }
+        );
+    };
 
     const sendMessage = () => {
         if (!selected || !draft.trim()) return;
@@ -235,39 +294,70 @@ export const DonationMap = () => {
                     <span className="text-sm font-medium">Карта на добротата</span>
                 </div>
                 <h2 className="text-4xl lg:text-5xl font-bold mb-4">Виж близо до теб</h2>
-                <p className="text-muted-foreground text-lg">Дарения, активни нужди и пунктове за събиране — кликни на маркер за детайли.</p>
+                <p className="text-muted-foreground text-lg">Използвай картата, за да намериш помощ или да дариш в твоя район. Можеш да местиш пина или да търсиш град.</p>
             </div>
 
             <div className="grid lg:grid-cols-[320px_1fr] gap-6">
                 {/* Filters */}
                 <div className="space-y-4">
-                    <Card className="p-5 border-2">
-                        <h3 className="font-bold mb-3 flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-primary" /> Град / Регион
-                        </h3>
-                        <Select
-                            value={CITIES.find((c) => c.coords[0] === center[0] && c.coords[1] === center[1])?.name || "Бургас"}
-                            onValueChange={(val) => {
-                                const c = CITIES.find((x) => x.name === val);
-                                if (c) setCenter(c.coords);
-                            }}
-                        >
-                            <SelectTrigger className="w-full bg-card">
-                                <SelectValue placeholder="Избери град..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {CITIES.map((c) => (
-                                    <SelectItem key={c.name} value={c.name}>
-                                        {c.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <Card className="p-5 border-2 space-y-4">
+                        <div className="space-y-2">
+                            <h3 className="font-bold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
+                                <Search className="w-4 h-4" /> Търси локация
+                            </h3>
+                            <form onSubmit={handleSearch} className="flex gap-2">
+                                <Input 
+                                    placeholder="Град или квартал..." 
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="bg-card"
+                                />
+                                <Button type="submit" size="icon" disabled={isSearching} className="shrink-0 bg-gradient-primary">
+                                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+                                </Button>
+                            </form>
+                        </div>
+
+                        <div className="pt-2">
+                            <h3 className="font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
+                                <MapPin className="w-4 h-4" /> Бърз избор
+                            </h3>
+                            <div className="flex flex-col gap-2">
+                                <Select
+                                    value={CITIES.find((c) => c.coords[0] === center[0] && c.coords[1] === center[1])?.name || ""}
+                                    onValueChange={(val) => {
+                                        const c = CITIES.find((x) => x.name === val);
+                                        if (c) setCenter(c.coords);
+                                    }}
+                                >
+                                    <SelectTrigger className="w-full bg-card border-2">
+                                        <SelectValue placeholder="Избери голям град..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {CITIES.map((c) => (
+                                            <SelectItem key={c.name} value={c.name}>
+                                                {c.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Button 
+                                    variant="outline" 
+                                    className="w-full border-2 hover:bg-primary/5 hover:text-primary transition-colors h-10" 
+                                    onClick={handleLocate}
+                                    disabled={isLocating}
+                                >
+                                    {isLocating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LocateFixed className="w-4 h-4 mr-2" />}
+                                    Локализирай ме
+                                </Button>
+                            </div>
+                        </div>
                     </Card>
 
                     <Card className="p-5 border-2">
-                        <h3 className="font-bold mb-3 flex items-center gap-2">
-                            <Search className="w-4 h-4 text-primary" /> Категория
+                        <h3 className="font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
+                            <Search className="w-4 h-4" /> Категория
                         </h3>
                         <div className="grid grid-cols-2 gap-2">
                             {CATEGORIES.map((c) => {
@@ -283,20 +373,19 @@ export const DonationMap = () => {
                     </Card>
 
                     <Card className="p-5 border-2">
-                        <h3 className="font-bold mb-3">Разстояние</h3>
-                        <Slider value={[radius]} min={1} max={20} step={1} onValueChange={(v) => setRadius(v[0])} />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                        <h3 className="font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">Радиус: <span className="text-primary">{radius} км</span></h3>
+                        <Slider value={[radius]} min={1} max={50} step={1} onValueChange={(v) => setRadius(v[0])} />
+                        <div className="flex justify-between text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-tighter">
                             <span>1 км</span>
-                            <span className="font-bold text-foreground">{radius} км</span>
-                            <span>20 км</span>
+                            <span>50 км</span>
                         </div>
                     </Card>
 
                     <Card className="p-5 border-2">
-                        <h3 className="font-bold mb-3">Покажи</h3>
+                        <h3 className="font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">Покажи</h3>
                         <div className="space-y-2">
                             {(Object.keys(TYPE_META) as PointType[]).map((t) => (
-                                <button key={t} onClick={() => setActiveTypes((s) => ({...s, [t]: !s[t]}))} className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 transition-smooth ${activeTypes[t] ? "border-primary bg-muted" : "border-border opacity-50"}`}>
+                                <button key={t} onClick={() => setActiveTypes((s) => ({...s, [t]: !s[t]}))} className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 transition-smooth ${activeTypes[t] ? "border-primary bg-primary/5" : "border-border opacity-50"}`}>
                                     <span className="flex items-center gap-2 text-sm font-medium">
                                         <span className="w-3 h-3 rounded-full" style={{background: TYPE_META[t].color}} />
                                         {TYPE_META[t].label}
@@ -307,36 +396,55 @@ export const DonationMap = () => {
                         </div>
                     </Card>
 
-                    <Card className="p-5 border-2 bg-gradient-hero">
-                        <div className="flex items-start gap-3">
-                            <Heart className="w-5 h-5 text-primary mt-0.5" fill="currentColor" />
+                    <Card className="p-5 border-2 bg-gradient-hero border-primary/20">
+                        <div className="flex items-start gap-3 text-primary">
+                            <Heart className="w-5 h-5 mt-0.5" fill="currentColor" />
                             <div>
-                                <div className="font-bold text-sm">{filtered.length} резултата</div>
-                                <div className="text-xs text-muted-foreground">в радиус {radius} км около центъра</div>
+                                <div className="font-black text-sm">{filtered.length} обяви</div>
+                                <div className="text-[11px] font-medium leading-tight">намерени в избрания район</div>
                             </div>
                         </div>
                     </Card>
                 </div>
 
                 {/* Map */}
-                <Card className="overflow-hidden border-2 shadow-soft h-[600px] relative z-0 isolate">
-                    <MapContainer center={center} zoom={13} scrollWheelZoom={false} style={{height: "100%", width: "100%"}}>
+                <Card className="overflow-hidden border-2 shadow-soft h-[650px] relative z-0 isolate group">
+                    <MapContainer center={center} zoom={13} scrollWheelZoom={true} style={{height: "100%", width: "100%"}}>
                         <Recenter center={center} />
+                        <MapEvents onMapClick={(lat, lng) => setCenter([lat, lng])} />
                         <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        
                         <Circle
                             center={center}
                             radius={radius * 1000}
                             pathOptions={{
                                 color: "hsl(152, 56%, 38%)",
                                 fillColor: "hsl(152, 70%, 55%)",
-                                fillOpacity: 0.08,
+                                fillOpacity: 0.1,
                                 weight: 2,
+                                dashArray: "5, 10"
                             }}
                         />
-                        {filtered.map((p) => (
-                            <Marker key={p.id} position={[p.lat, p.lng]} icon={makeIcon(p.type)} eventHandlers={{click: () => setSelected(p)}} />
-                        ))}
+
+                        {/* User position pin */}
+                        <Marker position={center} icon={userPinIcon} zIndexOffset={1000} />
+
+                        {isLoadingPoints ? (
+                             <div className="absolute inset-0 z-[1000] bg-background/20 backdrop-blur-[1px] grid place-items-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                             </div>
+                        ) : (
+                            filtered.map((p) => (
+                                <Marker key={p.id} position={[p.lat, p.lng]} icon={makeIcon(p.type)} eventHandlers={{click: () => setSelected(p)}} />
+                            ))
+                        )}
                     </MapContainer>
+                    
+                    <div className="absolute bottom-6 left-6 z-[1000] pointer-events-none">
+                         <div className="bg-background/90 backdrop-blur-md px-4 py-2 rounded-full border shadow-lg text-[11px] font-bold text-muted-foreground animate-in fade-in slide-in-from-bottom-4 duration-700">
+                             💡 Кликни на картата, за да преместиш позицията си
+                         </div>
+                    </div>
                 </Card>
             </div>
 

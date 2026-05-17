@@ -1,14 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import {
   Trophy, Sprout, TreeDeciduous, Trees, Crown, Star, ShieldCheck,
   BadgeCheck, Mail, Phone, MapPin, Flame, Heart, Quote, Award,
-  Target, MessageSquare, Package,
+  Target, MessageSquare, Package, User
 } from "lucide-react";
-import { useExchanges, computeProfileStats, CATEGORY_LABEL, getReceivedReviews } from "@/lib/reviewsStore";
+import { CATEGORY_LABEL } from "@/lib/reviewsStore";
 
 type Level = {
   key: string;
@@ -35,14 +34,6 @@ const BADGES = [
   { icon: Crown, name: "Лидер на квартала", desc: "Топ 3 в района ти", earned: false },
 ];
 
-const LEADERBOARD = [
-  { name: "Мария Г.", points: 142, donations: 38, level: "legend", avatar: "М" },
-  { name: "Иван П.", points: 98, donations: 26, level: "forest", avatar: "И" },
-  { name: "Ти", points: 64, donations: 17, level: "forest", avatar: "Т", isMe: true },
-  { name: "Елена С.", points: 51, donations: 14, level: "tree", avatar: "Е" },
-  { name: "Петър К.", points: 33, donations: 9, level: "tree", avatar: "П" },
-];
-
 const CATEGORY_ICONS = {
   accuracy: Target,
   communication: MessageSquare,
@@ -56,25 +47,49 @@ const TRUST_CHECKS = [
   { icon: MapPin, label: "Локация потвърдена", done: true },
 ];
 
-export const Gamification = () => {
-  const myPoints = 64;
-  const [filter, setFilter] = useState<"week" | "month" | "all">("month");
-  const exchanges = useExchanges();
-  const stats = useMemo(() => computeProfileStats(exchanges), [exchanges]);
-  const receivedReviews = useMemo(() => getReceivedReviews(exchanges), [exchanges]);
+interface Review {
+    id: number;
+    rating: number;
+    comment?: string;
+    createdAt: string;
+    reviewer?: { name: string };
+    exchange?: { donation?: { title: string } };
+}
+
+interface GamificationProps {
+    reviews: Review[];
+    donationsCount: number;
+}
+
+export const Gamification = ({ reviews, donationsCount }: GamificationProps) => {
+  // Logic to calculate points: 5 points per donation, 2 points per 5-star review
+  const myPoints = (donationsCount * 5) + (reviews.filter(r => r.rating === 5).length * 2);
+  
+  const stats = useMemo(() => {
+    const overall = reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : null;
+    return {
+        overall,
+        count: reviews.length,
+        byCategory: {
+            accuracy: { avg: overall, count: reviews.length },
+            communication: { avg: overall, count: reviews.length },
+            condition: { avg: overall, count: reviews.length },
+        }
+    };
+  }, [reviews]);
 
   const { current, next, progress } = useMemo(() => {
-    const cur = [...LEVELS].reverse().find((l) => myPoints >= l.min)!;
+    const cur = [...LEVELS].reverse().find((l) => myPoints >= l.min) || LEVELS[0];
     const nxt = LEVELS.find((l) => l.min > myPoints);
     const span = nxt ? nxt.min - cur.min : 1;
     const have = myPoints - cur.min;
     return { current: cur, next: nxt, progress: Math.min(100, (have / span) * 100) };
-  }, []);
+  }, [myPoints]);
 
   const CurIcon = current.icon;
 
   return (
-    <section id="trust" className="container py-20 lg:py-28">
+    <section id="trust" className="py-20 lg:py-28">
       <div className="max-w-2xl mx-auto text-center mb-14">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border shadow-soft mb-4">
           <Trophy className="w-4 h-4 text-accent" />
@@ -90,7 +105,7 @@ export const Gamification = () => {
 
       {/* My Profile + Level */}
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2 p-6 lg:p-8 border-2 bg-gradient-hero overflow-hidden relative">
+        <Card className="lg:col-span-2 p-6 lg:p-8 border-2 bg-gradient-hero overflow-hidden relative" style={{ borderRadius: '2rem' }}>
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div
@@ -126,9 +141,9 @@ export const Gamification = () => {
 
           <div className="grid grid-cols-3 gap-3 mt-6 pt-6 border-t border-border">
             {[
-              { v: "17", l: "дарения" },
+              { v: donationsCount.toString(), l: "дарения" },
               { v: stats.overall ? stats.overall.toFixed(1) : "—", l: `рейтинг (${stats.count})` },
-              { v: "84кг", l: "спасени" },
+              { v: `${donationsCount * 2}кг`, l: "спасени" },
             ].map((s, i) => (
               <div key={i} className="text-center">
                 <div className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
@@ -141,7 +156,7 @@ export const Gamification = () => {
         </Card>
 
         {/* Trust card */}
-        <Card className="p-6 border-2">
+        <Card className="p-6 border-2" style={{ borderRadius: '2rem' }}>
           <div className="flex items-center gap-2 mb-4">
             <ShieldCheck className="w-5 h-5 text-primary" />
             <h3 className="font-bold">Доверен профил</h3>
@@ -173,7 +188,7 @@ export const Gamification = () => {
       </div>
 
       {/* Rating breakdown by category */}
-      <Card className="p-6 lg:p-8 border-2 mb-8">
+      <Card className="p-6 lg:p-8 border-2 mb-8" style={{ borderRadius: '2rem' }}>
         <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Star className="w-5 h-5 text-accent fill-accent" />
@@ -228,7 +243,7 @@ export const Gamification = () => {
       </Card>
 
       {/* Badges */}
-      <Card className="p-6 lg:p-8 border-2 mb-8">
+      <Card className="p-6 lg:p-8 border-2 mb-8" style={{ borderRadius: '2rem' }}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-accent" />
@@ -265,116 +280,43 @@ export const Gamification = () => {
         </div>
       </Card>
 
-      {/* Leaderboard + Reviews */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card className="p-6 lg:p-8 border-2">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-accent" />
-              <h3 className="text-xl font-bold">Топ дарители</h3>
-            </div>
-            <div className="flex gap-1 p-1 bg-muted rounded-xl">
-              {(["week", "month", "all"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-smooth ${
-                    filter === f ? "bg-card shadow-soft text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {f === "week" ? "Седмица" : f === "month" ? "Месец" : "Всички"}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            {LEADERBOARD.map((u, i) => {
-              const lvl = LEVELS.find((l) => l.key === u.level)!;
-              const LvlIcon = lvl.icon;
-              return (
-                <div
-                  key={i}
-                  className={`flex items-center gap-3 p-3 rounded-xl border-2 ${
-                    u.isMe ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted/50"
-                  } transition-smooth`}
-                >
-                  <div
-                    className={`w-8 text-center font-bold text-lg ${
-                      i === 0 ? "text-accent" : i === 1 ? "text-muted-foreground" : i === 2 ? "text-secondary" : "text-muted-foreground"
-                    }`}
-                  >
-                    {i + 1}
-                  </div>
-                  <div className="w-10 h-10 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-bold shrink-0">
-                    {u.avatar}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm flex items-center gap-2">
-                      {u.name}
-                      {u.isMe && <Badge className="bg-primary text-primary-foreground border-0 text-[10px] py-0">ти</Badge>}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <LvlIcon className="w-3 h-3" style={{ color: lvl.color }} />
-                      {lvl.name} · {u.donations} дарения
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold">{u.points}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">точки</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <Button variant="outline" className="w-full mt-4 border-2">
-            Виж пълната класация
-          </Button>
-        </Card>
-
-        <Card className="p-6 lg:p-8 border-2">
+      {/* Reviews - Real data with preferred visualization */}
+      <div className="grid lg:grid-cols-1 gap-6">
+        <Card className="p-6 lg:p-8 border-2" style={{ borderRadius: '2rem' }}>
           <div className="flex items-center gap-2 mb-6">
             <Star className="w-5 h-5 text-accent fill-accent" />
             <h3 className="text-xl font-bold">Отзиви за теб</h3>
           </div>
           <div className="space-y-4">
-            {receivedReviews.length === 0 && (
+            {reviews.length === 0 && (
               <div className="text-sm text-muted-foreground text-center py-6">
                 Все още нямаш отзиви.
               </div>
             )}
-            {receivedReviews.slice(0, 4).map((r, i) => {
-              const ex = exchanges.find((e) => e.partnerReview === r);
+            {reviews.map((r, i) => {
               return (
-                <div key={i} className="p-4 rounded-2xl bg-muted/40 border border-border relative">
-                  <Quote className="absolute top-3 right-3 w-5 h-5 text-muted-foreground/40" />
-                  <div className="flex items-center gap-2 mb-2">
-                    {Array.from({ length: r.rating }).map((_, j) => (
-                      <Star key={j} className="w-3.5 h-3.5 text-accent fill-accent" />
-                    ))}
-                    {r.ago && <span className="text-xs text-muted-foreground ml-auto">{r.ago}</span>}
+                <div key={i} className="p-5 rounded-[1.5rem] bg-muted/40 border border-border relative">
+                  <Quote className="absolute top-4 right-4 w-6 h-6 text-primary opacity-10" />
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex">
+                        {Array.from({ length: 5 }).map((_, j) => (
+                        <Star key={j} className={`w-4 h-4 ${j < r.rating ? "text-accent fill-accent" : "text-muted-foreground/20"}`} />
+                        ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-auto font-medium">{new Date(r.createdAt).toLocaleDateString('bg-BG')}</span>
                   </div>
-                  <p className="text-sm mb-3 leading-relaxed">"{r.text}"</p>
-                  {r.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {r.tags.map((t) => (
-                        <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-card border border-border">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {ex && (
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-bold text-foreground">{ex.partnerName}</span> · {ex.item}
-                    </div>
-                  )}
+                  <p className="text-base mb-4 leading-relaxed italic text-foreground/90">"{r.comment || "Без коментар"}"</p>
+                  
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground border-t border-border/50 pt-3">
+                    <User className="w-3 h-3" />
+                    от <span className="font-bold text-foreground">{r.reviewer?.name || "Анонимен"}</span> 
+                    <span className="opacity-50">·</span>
+                    <span>за: {r.exchange?.donation?.title || "вещ"}</span>
+                  </div>
                 </div>
               );
             })}
           </div>
-          <Button variant="outline" className="w-full mt-4 border-2">
-            Всички отзиви
-          </Button>
         </Card>
       </div>
     </section>
