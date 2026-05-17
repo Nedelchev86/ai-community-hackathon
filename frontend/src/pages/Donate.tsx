@@ -12,6 +12,7 @@ import {HeartHandshake} from "lucide-react";
 import {MapContainer, TileLayer, Marker, useMapEvents} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { API_BASE } from "@/lib/api";
 
 const LocationPicker = ({position, setPosition}: {position: [number, number] | null; setPosition: (p: [number, number]) => void}) => {
     useMapEvents({
@@ -81,7 +82,7 @@ const Donate = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://localhost:3000/donations", {
+            const response = await fetch(`${API_BASE}/donations`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

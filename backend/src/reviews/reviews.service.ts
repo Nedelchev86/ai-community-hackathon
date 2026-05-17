@@ -1,19 +1,31 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(userId: number, exchangeId: number, data: { rating: number; comment?: string; imageUrl?: string }) {
+  async create(
+    userId: number,
+    exchangeId: number,
+    data: { rating: number; comment?: string; imageUrl?: string },
+  ) {
     const exchange = await this.prisma.exchange.findUnique({
       where: { id: exchangeId },
       include: { donation: true },
     });
 
     if (!exchange) throw new NotFoundException('Exchange not found');
-    if (exchange.status !== 'completed') throw new BadRequestException('Exchange must be completed to leave a review');
-    
+    if (exchange.status !== 'completed')
+      throw new BadRequestException(
+        'Exchange must be completed to leave a review',
+      );
+
     // Determine reviewee based on who is leaving the review
     let revieweeId: number;
     if (exchange.donation.userId === userId) {
@@ -28,7 +40,8 @@ export class ReviewsService {
     const existing = await this.prisma.review.findFirst({
       where: { exchangeId, reviewerId: userId },
     });
-    if (existing) throw new BadRequestException('You have already reviewed this exchange');
+    if (existing)
+      throw new BadRequestException('You have already reviewed this exchange');
 
     return this.prisma.review.create({
       data: {
@@ -47,7 +60,7 @@ export class ReviewsService {
       where: { revieweeId: userId },
       include: {
         reviewer: { select: { id: true, name: true } },
-        exchange: { include: { donation: { select: { title: true } } } }
+        exchange: { include: { donation: { select: { title: true } } } },
       },
       orderBy: { createdAt: 'desc' },
     });

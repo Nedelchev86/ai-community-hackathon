@@ -1,11 +1,12 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { PrismaLibSql } from '@prisma/adapter-libsql';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor() {
-    const adapter = new PrismaLibSql({ url: "file:dev.db" });
+    const url = process.env.DATABASE_URL || 'file:dev.db';
+    const adapter = new PrismaLibSql({ url });
     super({ adapter });
   }
 
@@ -13,4 +14,3 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     await this.$connect();
   }
 }
-

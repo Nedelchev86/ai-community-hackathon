@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE } from "@/lib/api";
 
 const Login = () => {
     const navigate = useNavigate();
@@ -28,7 +29,7 @@ const Login = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://localhost:3000/auth/login", {
+            const response = await fetch(`${API_BASE}/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -144,3 +145,4 @@ const Login = () => {
 };
 
 export default Login;
+

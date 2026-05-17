@@ -12,6 +12,7 @@ import {Input} from "@/components/ui/input";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {toast} from "sonner";
 import {Shirt, Sofa, BookOpen, Cpu, Package, MapPin, Heart, Search, MessageCircle, Phone, Star, Clock, User, Send, ArrowLeft, Bell, CheckCheck, Apple, Wrench, Footprints, Gamepad2, HandHeart} from "lucide-react";
+import { API_BASE } from "@/lib/api";
 import imgClothes from "@/assets/item-clothes.jpg";
 import imgFurniture from "@/assets/item-furniture.jpg";
 import imgBooks from "@/assets/item-books.jpg";
@@ -129,7 +130,7 @@ export const DonationMap = () => {
 
     useEffect(() => {
         // Извличане на всички дарения от бекенда
-        fetch("http://localhost:3000/donations")
+        fetch(`${API_BASE}/donations`)
             .then((res) => res.json())
             .then((data) => {
                 const mappedPoints: MapPoint[] = data.map((d: any) => ({
@@ -406,7 +407,7 @@ export const DonationMap = () => {
                                                         toast.error("Трябва да влезете в профила си.");
                                                         return;
                                                     }
-                                                    const res = await fetch("http://localhost:3000/exchanges", {
+                                                    const res = await fetch(`${API_BASE}/exchanges`, {
                                                         method: "POST",
                                                         headers: {
                                                             "Content-Type": "application/json",

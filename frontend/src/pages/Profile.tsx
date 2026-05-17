@@ -16,6 +16,7 @@ import {toast} from "sonner";
 import {MapContainer, TileLayer, Marker, useMapEvents} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { API_BASE } from "@/lib/api";
 
 import EcoCalculator from "@/components/EcoCalculator";
 import Gamification from "@/components/Gamification";
@@ -80,25 +81,25 @@ const Profile = () => {
         if (!token) return;
         
         // Fetch donations
-        fetch("http://localhost:3000/donations/me", { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API_BASE}/donations/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setMyDonations(Array.isArray(data) ? data : []))
             .catch(console.error);
 
         // Fetch sent requests
-        fetch("http://localhost:3000/exchanges/my-requests", { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API_BASE}/exchanges/my-requests`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setMyRequests(Array.isArray(data) ? data : []))
             .catch(console.error);
 
         // Fetch received requests
-        fetch("http://localhost:3000/exchanges/received-requests", { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API_BASE}/exchanges/received-requests`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setReceivedRequests(Array.isArray(data) ? data : []))
             .catch(console.error);
 
         // Fetch real reviews
-        fetch("http://localhost:3000/reviews/me", { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API_BASE}/reviews/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setMyReviews(Array.isArray(data) ? data : []))
             .catch(console.error);
@@ -112,7 +113,7 @@ const Profile = () => {
     const handleDelete = async (id: number) => {
         if (!window.confirm("Сигурни ли сте, че искате да изтриете тази обява?")) return;
         try {
-            const res = await fetch(`http://localhost:3000/donations/${id}`, {
+            const res = await fetch(`${API_BASE}/donations/${id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -131,7 +132,7 @@ const Profile = () => {
         e.preventDefault();
         if (!editingDonation) return;
         try {
-            const res = await fetch(`http://localhost:3000/donations/${editingDonation.id}`, {
+            const res = await fetch(`${API_BASE}/donations/${editingDonation.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -160,7 +161,7 @@ const Profile = () => {
 
     const handleAction = async (id: number, action: 'accept' | 'complete') => {
         try {
-            const res = await fetch(`http://localhost:3000/exchanges/${id}/${action}`, {
+            const res = await fetch(`${API_BASE}/exchanges/${id}/${action}`, {
                 method: "PATCH",
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -179,7 +180,7 @@ const Profile = () => {
     const handleReviewSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`http://localhost:3000/reviews`, {
+            const res = await fetch(`${API_BASE}/reviews`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

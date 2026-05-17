@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -10,10 +14,12 @@ export class ExchangesService {
     const donation = await this.prisma.donation.findUnique({
       where: { id: donationId },
     });
-    
+
     if (!donation) throw new NotFoundException('Donation not found');
-    if (donation.userId === userId) throw new ForbiddenException('Cannot request your own donation');
-    if (donation.status !== 'available') throw new ForbiddenException('Donation is not available');
+    if (donation.userId === userId)
+      throw new ForbiddenException('Cannot request your own donation');
+    if (donation.status !== 'available')
+      throw new ForbiddenException('Donation is not available');
 
     // Create exchange request
     return this.prisma.exchange.create({
@@ -30,7 +36,7 @@ export class ExchangesService {
       where: { requesterId: userId },
       include: {
         donation: {
-          include: { user: { select: { id: true, name: true, email: true } } }
+          include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -57,7 +63,8 @@ export class ExchangesService {
     });
 
     if (!exchange) throw new NotFoundException('Exchange not found');
-    if (exchange.donation.userId !== userId) throw new ForbiddenException('Not authorized');
+    if (exchange.donation.userId !== userId)
+      throw new ForbiddenException('Not authorized');
 
     // Update exchange and donation status
     await this.prisma.exchange.update({
@@ -78,11 +85,14 @@ export class ExchangesService {
     });
 
     if (!exchange) throw new NotFoundException('Exchange not found');
-    if (exchange.donation.userId !== userId && exchange.requesterId !== userId) {
+    if (
+      exchange.donation.userId !== userId &&
+      exchange.requesterId !== userId
+    ) {
       throw new ForbiddenException('Not authorized');
     }
     if (exchange.status !== 'accepted' && exchange.status !== 'completed') {
-       throw new ForbiddenException('Exchange must be accepted first');
+      throw new ForbiddenException('Exchange must be accepted first');
     }
 
     const isOwner = exchange.donation.userId === userId;
@@ -93,8 +103,8 @@ export class ExchangesService {
     if (isRequester) updatedData.requesterCompleted = true;
 
     // Check if both have completed now
-    const willBeCompleted = 
-      (isOwner ? true : exchange.ownerCompleted) && 
+    const willBeCompleted =
+      (isOwner ? true : exchange.ownerCompleted) &&
       (isRequester ? true : exchange.requesterCompleted);
 
     if (willBeCompleted) {

@@ -1,4 +1,11 @@
-import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Get,
+} from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -10,7 +17,13 @@ export class ReviewsController {
   @UseGuards(AuthGuard('jwt'))
   async createReview(
     @Request() req,
-    @Body() body: { exchangeId: number; rating: number; comment?: string; imageUrl?: string }
+    @Body()
+    body: {
+      exchangeId: number;
+      rating: number;
+      comment?: string;
+      imageUrl?: string;
+    },
   ) {
     return this.reviewsService.create(req.user.userId, body.exchangeId, body);
   }

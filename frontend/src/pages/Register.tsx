@@ -8,6 +8,7 @@ import {Label} from "@/components/ui/label";
 import {toast} from "sonner";
 import {motion} from "framer-motion";
 import {useAuth} from "@/contexts/AuthContext";
+import { API_BASE } from "@/lib/api";
 
 const Register = () => {
     const navigate = useNavigate();
@@ -36,7 +37,7 @@ const Register = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://localhost:3000/auth/register", {
+            const response = await fetch(`${API_BASE}/auth/register`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -55,7 +56,7 @@ const Register = () => {
             }
 
             // Автоматичен логин след успешна регистрация
-            const loginResponse = await fetch("http://localhost:3000/auth/login", {
+            const loginResponse = await fetch(`${API_BASE}/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

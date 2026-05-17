@@ -1,22 +1,21 @@
-import { Module } from "@nestjs/common";
-import { JwtModule } from "@nestjs/jwt";
-import { PassportModule } from "@nestjs/passport";
-import { AuthService } from "./auth.service";
-import { AuthController } from "./auth.controller";
-import { UsersModule } from "../users/users.module";
-import { JwtStrategy } from "./jwt.strategy";
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { UsersModule } from '../users/users.module';
+import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     JwtModule.register({
-      secret: "super-secret-key-123", // Use environment variables in production!
-      signOptions: { expiresIn: "60m" },
+      secret: process.env.JWT_SECRET || 'super-secret-key-123',
+      signOptions: { expiresIn: '24h' }, // Extended a bit for better UX in hackathon
     }),
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
 })
 export class AuthModule {}
-
