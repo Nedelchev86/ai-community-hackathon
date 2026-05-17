@@ -7,21 +7,50 @@ datasource db {
 }
 
 model User {
-  id               Int        @id @default(autoincrement())
-  email            String     @unique
+  id               Int                @id @default(autoincrement())
+  email            String             @unique
   password         String
   name             String?
   avatarUrl        String?
   phone            String?
   city             String?
   bio              String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   donations        Donation[]
-  exchangesAsReq   Exchange[] @relation("RequesterExchanges")
-  reviewsWritten   Review[]   @relation("ReviewsWritten")
-  reviewsReceived  Review[]   @relation("ReviewsReceived")
+  exchangesAsReq   Exchange[]         @relation("RequesterExchanges")
+  reviewsWritten   Review[]           @relation("ReviewsWritten")
+  reviewsReceived  Review[]           @relation("ReviewsReceived")
   messages         Message[]
+  eventsOrganized  Event[]
+  eventsParticipating EventParticipant[]
+}
+
+model Event {
+  id              Int                @id @default(autoincrement())
+  title           String
+  description     String
+  category        String
+  imageUrl        String?
+  date            DateTime
+  location        String
+  maxParticipants Int
+  organizerId     Int
+  organizer       User               @relation(fields: [organizerId], references: [id])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  participants    EventParticipant[]
+}
+
+model EventParticipant {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  userId    Int
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
 }
 
 model Donation {

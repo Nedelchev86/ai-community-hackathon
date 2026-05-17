@@ -142,8 +142,8 @@ export const DonationMap = () => {
                         category: (d.category as Category) || "Други",
                         title: d.title,
                         desc: d.description,
-                        lat: d.lat || CITIES.find((c) => c.name === d.city)?.coords[0] || BURGAS[0] + (Math.random() - 0.5) * 0.05,
-                        lng: d.lng || CITIES.find((c) => c.name === d.city)?.coords[1] || BURGAS[1] + (Math.random() - 0.5) * 0.05,
+                        lat: (d.lat || CITIES.find((c) => c.name === d.city)?.coords[0] || BURGAS[0]) + (Math.random() - 0.5) * 0.005,
+                        lng: (d.lng || CITIES.find((c) => c.name === d.city)?.coords[1] || BURGAS[1]) + (Math.random() - 0.5) * 0.005,
                         status: d.status as Status,
                         owner: d.user?.name || "Неизвестен",
                         ownerId: d.userId,
@@ -436,7 +436,7 @@ export const DonationMap = () => {
                         />
 
                         {/* User position pin */}
-                        <Marker position={center} icon={userPinIcon} zIndexOffset={1000} />
+                        <Marker position={center} icon={userPinIcon} zIndexOffset={-50} />
 
                         {isLoadingPoints ? (
                             <div className="absolute inset-0 z-[1000] bg-background/20 backdrop-blur-[1px] grid place-items-center">

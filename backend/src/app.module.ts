@@ -8,6 +8,7 @@ import { DonationsModule } from './donations/donations.module';
 import { ExchangesModule } from './exchanges/exchanges.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { MessagesModule } from './messages/messages.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MessagesModule } from './messages/messages.module';
     ExchangesModule,
     ReviewsModule,
     MessagesModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
