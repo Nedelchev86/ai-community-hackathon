@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { DonationsModule } from './donations/donations.module';
 import { ExchangesModule } from './exchanges/exchanges.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     DonationsModule,
     ExchangesModule,
     ReviewsModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

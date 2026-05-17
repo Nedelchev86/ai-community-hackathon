@@ -9,11 +9,12 @@ import {Badge} from "@/components/ui/badge";
 import {Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription} from "@/components/ui/sheet";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Input} from "@/components/ui/input";
-import {ScrollArea} from "@/components/ui/scroll-area";
 import {toast} from "sonner";
-import {Shirt, Sofa, BookOpen, Cpu, Package, MapPin, Heart, Search, MessageCircle, Phone, Star, Clock, User, Send, ArrowLeft, Bell, CheckCheck, Apple, Wrench, Footprints, Gamepad2, HandHeart, LocateFixed, Navigation, Loader2} from "lucide-react";
-import { API_BASE } from "@/lib/api";
+import {Shirt, Sofa, BookOpen, Cpu, Package, MapPin, Heart, Search, MessageCircle, Phone, Star, Clock, User, ArrowLeft, Apple, Wrench, Footprints, Gamepad2, HandHeart, LocateFixed, Navigation, Loader2} from "lucide-react";
+import {API_BASE} from "@/lib/api";
 import imgOther from "@/assets/item-other.jpg";
+import ChatDialog from "./ChatDialog";
+import {useAuth} from "@/contexts/AuthContext";
 
 type PointType = "donation" | "need" | "hub";
 type Category = "Дрехи" | "Обувки" | "Играчки" | "Техника" | "Мебели" | "Книги" | "Други" | "Спасена храна" | "Време и труд";
@@ -29,6 +30,7 @@ interface MapPoint {
     lng: number;
     status: Status;
     owner: string;
+    ownerId: number;
     rating: number;
     postedAgo: string;
     image: string;
@@ -72,6 +74,14 @@ const STATUS_META: Record<Status, {label: string; className: string}> = {
     urgent: {label: "Спешно", className: "bg-gradient-warm text-primary-foreground"},
 };
 
+const FEATURED_CITIES = [
+    {name: "Бургас", coords: [42.5048, 27.4626] as [number, number], emoji: "🌊"},
+    {name: "София", coords: [42.6977, 23.3219] as [number, number], emoji: "🏛️"},
+    {name: "Варна", coords: [43.2141, 27.9147] as [number, number], emoji: "⚓"},
+    {name: "Пловдив", coords: [42.1354, 24.7453] as [number, number], emoji: "🏺"},
+    {name: "Русе", coords: [43.8486, 25.9656] as [number, number], emoji: "🌉"},
+];
+
 const makeIcon = (type: PointType) =>
     L.divIcon({
         className: "",
@@ -113,31 +123,9 @@ const MapEvents = ({onMapClick}: {onMapClick: (lat: number, lng: number) => void
     return null;
 };
 
-type ChatMessage = {
-    id: string;
-    from: "me" | "them";
-    text: string;
-    ts: number;
-};
-
-const CHAT_KEY = (id: string) => `dnh_chat_${id}`;
-const loadChat = (id: string): ChatMessage[] => {
-    try {
-        return JSON.parse(localStorage.getItem(CHAT_KEY(id)) || "[]");
-    } catch {
-        return [];
-    }
-};
-const saveChat = (id: string, msgs: ChatMessage[]) => localStorage.setItem(CHAT_KEY(id), JSON.stringify(msgs));
-
-const AUTO_REPLIES = ["Здравей! Благодаря за интереса 💚", "Да, още е налично. Кога ти е удобно?", "Мога да го запазя за теб до утре.", "Намира се близо до центъра, лесно за вземане.", "Супер! Пиши ми час и ще се организираме."];
-
-const formatTime = (ts: number) => {
-    const d = new Date(ts);
-    return d.toLocaleTimeString("bg-BG", {hour: "2-digit", minute: "2-digit"});
-};
-
 export const DonationMap = () => {
+    const {user: currentUser} = useAuth();
+    const token = localStorage.getItem("access_token");
     const [donations, setDonations] = useState<MapPoint[]>([]);
     const [isLoadingPoints, setIsLoadingPoints] = useState(true);
 
@@ -158,6 +146,7 @@ export const DonationMap = () => {
                         lng: d.lng || CITIES.find((c) => c.name === d.city)?.coords[1] || BURGAS[1] + (Math.random() - 0.5) * 0.05,
                         status: d.status as Status,
                         owner: d.user?.name || "Неизвестен",
+                        ownerId: d.userId,
                         rating: 5.0,
                         postedAgo: new Date(d.createdAt).toLocaleDateString(),
                         image: d.imageUrl || imgOther,
@@ -181,24 +170,14 @@ export const DonationMap = () => {
     });
     const [center, setCenter] = useState<[number, number]>(BURGAS);
     const [selected, setSelected] = useState<MapPoint | null>(null);
-    const [view, setView] = useState<"details" | "chat">("details");
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [draft, setDraft] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
-    
-    const replyTimer = useRef<number | null>(null);
-    const scrollEndRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-        if (selected) setMessages(loadChat(selected.id));
-        else setView("details");
-    }, [selected]);
-
-    useEffect(() => {
-        scrollEndRef.current?.scrollIntoView({behavior: "smooth"});
-    }, [messages, view]);
+    // Real Chat States
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [activeExchangeId, setActiveExchangeId] = useState<number | null>(null);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -238,46 +217,59 @@ export const DonationMap = () => {
             () => {
                 setIsLocating(false);
                 toast.error("Не успяхме да ви локализираме. Проверете настройките за достъп.");
-            }
-        );
-    };
-
-    const sendMessage = () => {
-        if (!selected || !draft.trim()) return;
-        const mine: ChatMessage = {
-            id: crypto.randomUUID(),
-            from: "me",
-            text: draft.trim(),
-            ts: Date.now(),
-        };
-        const next = [...messages, mine];
-        setMessages(next);
-        saveChat(selected.id, next);
-        setDraft("");
-
-        if (replyTimer.current) window.clearTimeout(replyTimer.current);
-        const point = selected;
-        replyTimer.current = window.setTimeout(
-            () => {
-                const reply: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    from: "them",
-                    text: AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)],
-                    ts: Date.now(),
-                };
-                const updated = [...loadChat(point.id), reply];
-                saveChat(point.id, updated);
-                setMessages(updated);
-                toast(`Ново съобщение от ${point.owner}`, {
-                    description: reply.text,
-                    icon: <Bell className="w-4 h-4" />,
-                });
             },
-            1400 + Math.random() * 1200,
         );
     };
 
-    const openChat = () => setView("chat");
+    const handleOpenChat = async () => {
+        if (!selected || !token) {
+            toast.error("Трябва да влезете в профила си, за да чатите.");
+            return;
+        }
+
+        if (selected.ownerId === parseInt(currentUser?.id || "0")) {
+            toast.error("Не можете да чатите със себе си.");
+            return;
+        }
+
+        setIsChatLoading(true);
+        try {
+            // First, try to find an existing exchange
+            const res = await fetch(`${API_BASE}/exchanges/my-requests`, {
+                headers: {Authorization: `Bearer ${token}`},
+            });
+            const exchanges = await res.json();
+            const existing = exchanges.find((e: any) => e.donationId === parseInt(selected.id));
+
+            if (existing) {
+                setActiveExchangeId(existing.id);
+                setIsChatOpen(true);
+            } else {
+                // Create a new exchange to start chatting
+                const createRes = await fetch(`${API_BASE}/exchanges`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({donationId: parseInt(selected.id)}),
+                });
+                if (createRes.ok) {
+                    const newExchange = await createRes.json();
+                    setActiveExchangeId(newExchange.id);
+                    setIsChatOpen(true);
+                    toast.success("Започнахте нов чат!");
+                } else {
+                    const err = await createRes.json();
+                    toast.error("Грешка", {description: err.message});
+                }
+            }
+        } catch (err) {
+            toast.error("Мрежова грешка при стартиране на чат.");
+        } finally {
+            setIsChatLoading(false);
+        }
+    };
 
     const filtered = useMemo(
         () =>
@@ -299,6 +291,29 @@ export const DonationMap = () => {
                 <p className="text-muted-foreground text-lg">Използвай картата, за да намериш помощ или да дариш в твоя район. Можеш да местиш пина или да търсиш град.</p>
             </div>
 
+            <div className="mb-6 -mx-4 px-4 sm:mx-0 sm:px-0">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 snap-x snap-mandatory" style={{scrollbarWidth: "none"}}>
+                    {FEATURED_CITIES.map((c) => {
+                        const active = Math.abs(center[0] - c.coords[0]) < 0.01 && Math.abs(center[1] - c.coords[1]) < 0.01;
+                        const count = donations.filter((p) => distKm(c.coords, [p.lat, p.lng]) <= 25).length;
+                        return (
+                            <button
+                                key={c.name}
+                                onClick={() => {
+                                    setCenter(c.coords);
+                                    toast.success(`Преместено към ${c.name}`);
+                                }}
+                                className={`shrink-0 snap-start flex items-center gap-2 px-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-all duration-300 ${active ? "bg-gradient-primary text-primary-foreground border-transparent shadow-soft scale-105" : "bg-card border-border hover:border-primary hover:bg-primary/5"}`}
+                            >
+                                <span className="text-base">{c.emoji}</span>
+                                <span>{c.name}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? "bg-white/20" : "bg-muted text-muted-foreground"}`}>{count}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
             <div className="grid lg:grid-cols-[320px_1fr] gap-6">
                 {/* Filters */}
                 <div className="space-y-4">
@@ -308,12 +323,7 @@ export const DonationMap = () => {
                                 <Search className="w-4 h-4" /> Търси локация
                             </h3>
                             <form onSubmit={handleSearch} className="flex gap-2">
-                                <Input 
-                                    placeholder="Град или квартал..." 
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="bg-card"
-                                />
+                                <Input placeholder="Град или квартал..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-card" />
                                 <Button type="submit" size="icon" disabled={isSearching} className="shrink-0 bg-gradient-primary">
                                     {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
                                 </Button>
@@ -344,12 +354,7 @@ export const DonationMap = () => {
                                     </SelectContent>
                                 </Select>
 
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full border-2 hover:bg-primary/5 hover:text-primary transition-colors h-10" 
-                                    onClick={handleLocate}
-                                    disabled={isLocating}
-                                >
+                                <Button variant="outline" className="w-full border-2 hover:bg-primary/5 hover:text-primary transition-colors h-10" onClick={handleLocate} disabled={isLocating}>
                                     {isLocating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LocateFixed className="w-4 h-4 mr-2" />}
                                     Локализирай ме
                                 </Button>
@@ -375,7 +380,9 @@ export const DonationMap = () => {
                     </Card>
 
                     <Card className="p-5 border-2">
-                        <h3 className="font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">Радиус: <span className="text-primary">{radius} км</span></h3>
+                        <h3 className="font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
+                            Радиус: <span className="text-primary">{radius} км</span>
+                        </h3>
                         <Slider value={[radius]} min={1} max={50} step={1} onValueChange={(v) => setRadius(v[0])} />
                         <div className="flex justify-between text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-tighter">
                             <span>1 км</span>
@@ -415,7 +422,7 @@ export const DonationMap = () => {
                         <Recenter center={center} />
                         <MapEvents onMapClick={(lat, lng) => setCenter([lat, lng])} />
                         <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        
+
                         <Circle
                             center={center}
                             radius={radius * 1000}
@@ -424,7 +431,7 @@ export const DonationMap = () => {
                                 fillColor: "hsl(152, 70%, 55%)",
                                 fillOpacity: 0.1,
                                 weight: 2,
-                                dashArray: "5, 10"
+                                dashArray: "5, 10",
                             }}
                         />
 
@@ -432,20 +439,16 @@ export const DonationMap = () => {
                         <Marker position={center} icon={userPinIcon} zIndexOffset={1000} />
 
                         {isLoadingPoints ? (
-                             <div className="absolute inset-0 z-[1000] bg-background/20 backdrop-blur-[1px] grid place-items-center">
+                            <div className="absolute inset-0 z-[1000] bg-background/20 backdrop-blur-[1px] grid place-items-center">
                                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                             </div>
+                            </div>
                         ) : (
-                            filtered.map((p) => (
-                                <Marker key={p.id} position={[p.lat, p.lng]} icon={makeIcon(p.type)} eventHandlers={{click: () => setSelected(p)}} />
-                            ))
+                            filtered.map((p) => <Marker key={p.id} position={[p.lat, p.lng]} icon={makeIcon(p.type)} eventHandlers={{click: () => setSelected(p)}} />)
                         )}
                     </MapContainer>
-                    
+
                     <div className="absolute bottom-6 left-6 z-[1000] pointer-events-none">
-                         <div className="bg-background/90 backdrop-blur-md px-4 py-2 rounded-full border shadow-lg text-[11px] font-bold text-muted-foreground animate-in fade-in slide-in-from-bottom-4 duration-700">
-                             💡 Кликни на картата, за да преместиш позицията си
-                         </div>
+                        <div className="bg-background/90 backdrop-blur-md px-4 py-2 rounded-full border shadow-lg text-[11px] font-bold text-muted-foreground animate-in fade-in slide-in-from-bottom-4 duration-700">💡 Кликни на картата, за да преместиш позицията си</div>
                     </div>
                 </Card>
             </div>
@@ -453,7 +456,7 @@ export const DonationMap = () => {
             {/* Details Sheet */}
             <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
                 <SheetContent className="w-full sm:max-w-md p-0 flex flex-col h-[100dvh] max-h-[100dvh]">
-                    {selected && view === "details" && (
+                    {selected && (
                         <div className="overflow-y-auto">
                             <div className="relative">
                                 <img src={selected.image} alt={selected.title} loading="lazy" width={512} height={512} className="w-full h-64 object-cover" />
@@ -461,11 +464,7 @@ export const DonationMap = () => {
                                     <Badge style={{background: TYPE_META[selected.type]?.color || "#ccc"}} className="text-white border-0 shadow-soft">
                                         {TYPE_META[selected.type]?.icon || "📦"} {TYPE_META[selected.type]?.label || "Вещ"}
                                     </Badge>
-                                    {STATUS_META[selected.status] && (
-                                        <Badge className={`border-0 shadow-soft ${STATUS_META[selected.status].className}`}>
-                                            {STATUS_META[selected.status].label}
-                                        </Badge>
-                                    )}
+                                    {STATUS_META[selected.status] && <Badge className={`border-0 shadow-soft ${STATUS_META[selected.status].className}`}>{STATUS_META[selected.status].label}</Badge>}
                                 </div>
                             </div>
 
@@ -508,15 +507,14 @@ export const DonationMap = () => {
 
                                 <div className="space-y-2 pt-2">
                                     <div className="flex gap-2">
-                                        <Button className="flex-1 bg-gradient-primary hover:opacity-90 shadow-soft h-12 text-base" onClick={openChat}>
-                                            <MessageCircle className="w-5 h-5 mr-2" /> Чат
-                                            {messages.length > 0 && <Badge className="ml-2 bg-background/20 text-primary-foreground border-0">{messages.length}</Badge>}
+                                        <Button className="flex-1 bg-gradient-primary hover:opacity-90 shadow-soft h-12 text-base" onClick={handleOpenChat} disabled={isChatLoading}>
+                                            {isChatLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <MessageCircle className="w-5 h-5 mr-2" />}
+                                            Чат
                                         </Button>
                                         <Button
                                             className="flex-1 bg-green-600 hover:bg-green-700 shadow-soft h-12 text-base text-white"
                                             onClick={async () => {
                                                 try {
-                                                    const token = localStorage.getItem("access_token");
                                                     if (!token) {
                                                         toast.error("Трябва да влезете в профила си.");
                                                         return;
@@ -525,17 +523,17 @@ export const DonationMap = () => {
                                                         method: "POST",
                                                         headers: {
                                                             "Content-Type": "application/json",
-                                                            Authorization: `Bearer ${token}`
+                                                            Authorization: `Bearer ${token}`,
                                                         },
-                                                        body: JSON.stringify({ donationId: parseInt(selected.id) })
+                                                        body: JSON.stringify({donationId: parseInt(selected.id)}),
                                                     });
                                                     if (res.ok) {
-                                                        toast.success("Заявката е изпратена успішно!", { description: "Собственикът ще бъде уведомен."});
+                                                        toast.success("Заявката е изпратена успішно!", {description: "Собственикът ще бъде уведомен."});
                                                     } else {
                                                         const err = await res.json();
-                                                        toast.error("Възникна грешка", { description: err.message });
+                                                        toast.error("Възникна грешка", {description: err.message});
                                                     }
-                                                } catch(e) {
+                                                } catch (e) {
                                                     toast.error("Мрежова грешка");
                                                 }
                                             }}
@@ -558,75 +556,10 @@ export const DonationMap = () => {
                             </div>
                         </div>
                     )}
-
-                    {selected && view === "chat" && (
-                        <div className="flex flex-col h-full overflow-hidden">
-                            <div className="flex items-center gap-3 p-4 border-b bg-gradient-hero shrink-0">
-                                <Button variant="ghost" size="icon" onClick={() => setView("details")} className="shrink-0">
-                                    <ArrowLeft className="w-5 h-5" />
-                                </Button>
-                                <div className="w-10 h-10 rounded-full bg-gradient-primary grid place-items-center shrink-0">
-                                    <User className="w-5 h-5 text-primary-foreground" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-bold text-sm truncate">{selected.owner}</div>
-                                    <div className="text-xs text-muted-foreground truncate">{selected.title}</div>
-                                </div>
-                                <Badge style={{background: TYPE_META[selected.type].color}} className="text-white border-0 shrink-0">
-                                    {TYPE_META[selected.type].icon}
-                                </Badge>
-                            </div>
-
-                            <ScrollArea className="flex-1 min-h-0 p-4">
-                                {messages.length === 0 ? (
-                                    <div className="h-full grid place-items-center text-center py-16">
-                                        <div>
-                                            <div className="w-16 h-16 mx-auto rounded-full bg-muted grid place-items-center mb-3">
-                                                <MessageCircle className="w-7 h-7 text-muted-foreground" />
-                                            </div>
-                                            <div className="font-bold mb-1">Започни разговора</div>
-                                            <div className="text-sm text-muted-foreground max-w-xs">Поздрави {selected.owner} и попитай за вещта.</div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {messages.map((m) => (
-                                            <div key={m.id} className={`flex ${m.from === "me" ? "justify-end" : "justify-start"}`}>
-                                                <div className={`max-w-[80%] rounded-2xl px-4 py-2 shadow-soft ${m.from === "me" ? "bg-gradient-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"}`}>
-                                                    <div className="text-sm whitespace-pre-wrap break-words">{m.text}</div>
-                                                    <div className={`flex items-center gap-1 text-[10px] mt-1 ${m.from === "me" ? "text-primary-foreground/80 justify-end" : "text-muted-foreground"}`}>
-                                                        {formatTime(m.ts)}
-                                                        {m.from === "me" && <CheckCheck className="w-3 h-3" />}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <div ref={scrollEndRef} />
-                                    </div>
-                                )}
-                            </ScrollArea>
-
-                            <div className="p-3 border-t bg-background flex items-center gap-2">
-                                <Input
-                                    value={draft}
-                                    onChange={(e) => setDraft(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault();
-                                            sendMessage();
-                                        }
-                                    }}
-                                    placeholder="Напиши съобщение…"
-                                    className="flex-1"
-                                />
-                                <Button onClick={sendMessage} disabled={!draft.trim()} className="bg-gradient-primary shrink-0" size="icon">
-                                    <Send className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
                 </SheetContent>
             </Sheet>
+
+            {activeExchangeId && <ChatDialog exchangeId={activeExchangeId} isOpen={isChatOpen} onOpenChange={setIsChatOpen} recipientName={selected?.owner || "Потребител"} itemTitle={selected?.title || "Вещ"} />}
         </section>
     );
 };

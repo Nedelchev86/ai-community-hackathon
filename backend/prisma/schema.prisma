@@ -21,6 +21,7 @@ model User {
   exchangesAsReq   Exchange[] @relation("RequesterExchanges")
   reviewsWritten   Review[]   @relation("ReviewsWritten")
   reviewsReceived  Review[]   @relation("ReviewsReceived")
+  messages         Message[]
 }
 
 model Donation {
@@ -42,17 +43,28 @@ model Donation {
 }
 
 model Exchange {
-  id                 Int      @id @default(autoincrement())
+  id                 Int       @id @default(autoincrement())
   donationId         Int
-  donation           Donation @relation(fields: [donationId], references: [id])
+  donation           Donation  @relation(fields: [donationId], references: [id])
   requesterId        Int
-  requester          User     @relation("RequesterExchanges", fields: [requesterId], references: [id])
-  status             String   @default("pending") // pending, accepted, completed, rejected
-  requesterCompleted Boolean  @default(false)
-  ownerCompleted     Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  requester          User      @relation("RequesterExchanges", fields: [requesterId], references: [id])
+  status             String    @default("pending") // pending, accepted, completed, rejected
+  requesterCompleted Boolean   @default(false)
+  ownerCompleted     Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
   reviews            Review[]
+  messages           Message[]
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  content    String
+  createdAt  DateTime @default(now())
+  senderId   Int
+  sender     User     @relation(fields: [senderId], references: [id])
+  exchangeId Int
+  exchange   Exchange @relation(fields: [exchangeId], references: [id])
 }
 
 model Review {

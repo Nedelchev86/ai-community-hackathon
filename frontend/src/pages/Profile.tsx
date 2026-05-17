@@ -3,7 +3,7 @@ import {Link} from "react-router-dom";
 import {Card} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
-import {Star, Package, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info} from "lucide-react";
+import {Star, Package, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info, MessageCircle} from "lucide-react";
 import {useAuth} from "@/contexts/AuthContext";
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter} from "@/components/ui/dialog";
 import {Input} from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { API_BASE } from "@/lib/api";
 
 import EcoCalculator from "@/components/EcoCalculator";
 import Gamification from "@/components/Gamification";
+import ChatDialog from "@/components/ChatDialog";
 
 interface Donation {
     id: number;
@@ -68,6 +69,10 @@ const Profile = () => {
 
     const [reviewData, setReviewData] = useState({ exchangeId: 0, rating: 5, comment: "" });
     const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+
+    // Chat States
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [activeChatExchange, setActiveChatExchange] = useState<Exchange | null>(null);
 
     const fetchData = useCallback(() => {
         if (!token) return;
@@ -187,6 +192,11 @@ const Profile = () => {
         } catch (err) {
             toast.error("Мрежова грешка.");
         }
+    };
+
+    const handleOpenChat = (ex: Exchange) => {
+        setActiveChatExchange(ex);
+        setIsChatOpen(true);
     };
 
     const overall = myReviews.length ? myReviews.reduce((sum, r) => sum + r.rating, 0) / myReviews.length : 0;
@@ -310,12 +320,15 @@ const Profile = () => {
                                 {receivedRequests.length === 0 && <Card className="p-6 text-muted-foreground text-sm border-dashed border-2">Нямате входящи заявки.</Card>}
                                 {receivedRequests.map(r => (
                                     <Card key={r.id} className="p-4 border-2 flex items-center justify-between gap-4">
-                                        <div>
-                                            <div className="font-bold text-sm">{r.donation.title}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-sm truncate">{r.donation.title}</div>
                                             <div className="text-xs text-muted-foreground">Поискано от: <span className="font-semibold text-foreground">{r.requester.name}</span></div>
                                             <Badge variant="secondary" className="mt-1">{r.status}</Badge>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 shrink-0">
+                                            <Button size="sm" variant="outline" className="border-primary text-primary" onClick={() => handleOpenChat(r)}>
+                                                <MessageCircle className="w-4 h-4" />
+                                            </Button>
                                             {r.status === 'pending' && (
                                                 <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleAction(r.id, 'accept')}>
                                                     <Check className="w-4 h-4 mr-1" /> Приеми
@@ -341,12 +354,15 @@ const Profile = () => {
                                 {myRequests.length === 0 && <Card className="p-6 text-muted-foreground text-sm border-dashed border-2">Нямате изходящи заявки.</Card>}
                                 {myRequests.map(r => (
                                     <Card key={r.id} className="p-4 border-2 flex items-center justify-between gap-4">
-                                        <div>
-                                            <div className="font-bold text-sm">{r.donation.title}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-sm truncate">{r.donation.title}</div>
                                             <div className="text-xs text-muted-foreground">Собственик: <span className="font-semibold text-foreground">{r.donation.user?.name}</span></div>
                                             <Badge variant="secondary" className="mt-1">{r.status}</Badge>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 shrink-0">
+                                            <Button size="sm" variant="outline" className="border-primary text-primary" onClick={() => handleOpenChat(r)}>
+                                                <MessageCircle className="w-4 h-4" />
+                                            </Button>
                                             {r.status === 'accepted' && (
                                                 <Button size="sm" className="bg-primary hover:opacity-90" onClick={() => handleAction(r.id, 'complete')}>
                                                     <CheckCircle2 className="w-4 h-4 mr-1" /> Получено
@@ -479,6 +495,20 @@ const Profile = () => {
 
                 <EcoCalculator />
                 <Gamification reviews={myReviews} donationsCount={myDonations.length} />
+
+                {activeChatExchange && (
+                    <ChatDialog 
+                        exchangeId={activeChatExchange.id}
+                        isOpen={isChatOpen}
+                        onOpenChange={setIsChatOpen}
+                        recipientName={
+                            activeChatExchange.requesterId === parseInt(user?.id || "0")
+                                ? activeChatExchange.donation.user?.name || "Собственик"
+                                : activeChatExchange.requester.name
+                        }
+                        itemTitle={activeChatExchange.donation.title}
+                    />
+                )}
             </main>
         </div>
     );
