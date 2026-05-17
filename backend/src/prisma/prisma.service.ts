@@ -6,7 +6,8 @@ import { PrismaLibSql } from '@prisma/adapter-libsql';
 export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor() {
     const url = process.env.DATABASE_URL || 'file:dev.db';
-    const adapter = new PrismaLibSql({ url });
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+    const adapter = new PrismaLibSql({ url, authToken });
     super({ adapter });
   }
 
