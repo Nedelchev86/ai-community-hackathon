@@ -124,28 +124,28 @@ const Register = () => {
                                     <Label htmlFor="name">Име и Фамилия</Label>
                                     <div className="relative">
                                         <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                        <Input id="name" name="name" placeholder="Иван Иванов" className="pl-9 bg-background/50" value={formData.name} onChange={handleChange} required />
+                                        <Input id="name" name="name" placeholder="Иван Иванов" className="pl-9 bg-background/50" value={formData.name} onChange={handleChange} autoComplete="name" required />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Имейл адрес</Label>
                                     <div className="relative">
                                         <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                        <Input id="email" name="email" type="email" placeholder="ivan@example.com" className="pl-9 bg-background/50" value={formData.email} onChange={handleChange} required />
+                                        <Input id="email" name="email" type="email" placeholder="ivan@example.com" className="pl-9 bg-background/50" value={formData.email} onChange={handleChange} autoComplete="email" required />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="password">Парола</Label>
                                     <div className="relative">
                                         <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                        <Input id="password" name="password" type="password" placeholder="••••••••" className="pl-9 bg-background/50" value={formData.password} onChange={handleChange} required />
+                                        <Input id="password" name="password" type="password" placeholder="••••••••" className="pl-9 bg-background/50" value={formData.password} onChange={handleChange} autoComplete="new-password" required />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="confirmPassword">Потвърди паролата</Label>
                                     <div className="relative">
                                         <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                        <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="••••••••" className="pl-9 bg-background/50" value={formData.confirmPassword} onChange={handleChange} required />
+                                        <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="••••••••" className="pl-9 bg-background/50" value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" required />
                                     </div>
                                 </div>
                                 <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 mt-2 h-11" disabled={isLoading}>

@@ -101,6 +101,7 @@ const Login = () => {
                                             className="pl-9 bg-background/50"
                                             value={formData.email}
                                             onChange={handleChange}
+                                            autoComplete="username"
                                             required 
                                         />
                                     </div>
@@ -120,6 +121,7 @@ const Login = () => {
                                             className="pl-9 bg-background/50"
                                             value={formData.password}
                                             onChange={handleChange}
+                                            autoComplete="current-password"
                                             required
                                         />
                                     </div>

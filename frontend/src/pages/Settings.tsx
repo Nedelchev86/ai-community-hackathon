@@ -119,11 +119,11 @@ const Settings = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2"><User className="w-4 h-4" /> Име и Фамилия</Label>
-                                        <Input value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} required placeholder="Вашето име" />
+                                        <Input value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} required placeholder="Вашето име" autoComplete="name" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2"><Phone className="w-4 h-4" /> Телефон</Label>
-                                        <Input value={profileData.phone} onChange={(e) => setProfileData({...profileData, phone: e.target.value})} placeholder="+359 888 123 456" />
+                                        <Input value={profileData.phone} onChange={(e) => setProfileData({...profileData, phone: e.target.value})} placeholder="+359 888 123 456" autoComplete="tel" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Град</Label>
@@ -131,7 +131,7 @@ const Settings = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2"><Lock className="w-4 h-4" /> Нова парола (оставете празно за без промяна)</Label>
-                                        <Input type="password" value={profileData.password} onChange={(e) => setProfileData({...profileData, password: e.target.value})} placeholder="******" />
+                                        <Input type="password" value={profileData.password} onChange={(e) => setProfileData({...profileData, password: e.target.value})} placeholder="******" autoComplete="new-password" />
                                     </div>
                                 </div>
                                 

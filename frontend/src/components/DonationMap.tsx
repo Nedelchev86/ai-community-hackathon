@@ -146,20 +146,22 @@ export const DonationMap = () => {
         fetch(`${API_BASE}/donations`)
             .then((res) => res.json())
             .then((data) => {
-                const mappedPoints: MapPoint[] = data.map((d: any) => ({
-                    id: d.id.toString(),
-                    type: (d.type as PointType) || "donation",
-                    category: (d.category as Category) || "Други",
-                    title: d.title,
-                    desc: d.description,
-                    lat: d.lat || CITIES.find((c) => c.name === d.city)?.coords[0] || BURGAS[0] + (Math.random() - 0.5) * 0.05,
-                    lng: d.lng || CITIES.find((c) => c.name === d.city)?.coords[1] || BURGAS[1] + (Math.random() - 0.5) * 0.05,
-                    status: d.status,
-                    owner: d.user?.name || "Неизвестен",
-                    rating: 5.0,
-                    postedAgo: new Date(d.createdAt).toLocaleDateString(),
-                    image: d.imageUrl || imgOther,
-                }));
+                const mappedPoints: MapPoint[] = data
+                    .filter((d: any) => ["available", "reserved", "open", "urgent"].includes(d.status))
+                    .map((d: any) => ({
+                        id: d.id.toString(),
+                        type: (d.type as PointType) || "donation",
+                        category: (d.category as Category) || "Други",
+                        title: d.title,
+                        desc: d.description,
+                        lat: d.lat || CITIES.find((c) => c.name === d.city)?.coords[0] || BURGAS[0] + (Math.random() - 0.5) * 0.05,
+                        lng: d.lng || CITIES.find((c) => c.name === d.city)?.coords[1] || BURGAS[1] + (Math.random() - 0.5) * 0.05,
+                        status: d.status as Status,
+                        owner: d.user?.name || "Неизвестен",
+                        rating: 5.0,
+                        postedAgo: new Date(d.createdAt).toLocaleDateString(),
+                        image: d.imageUrl || imgOther,
+                    }));
                 setDonations(mappedPoints);
                 setIsLoadingPoints(false);
             })
@@ -456,10 +458,14 @@ export const DonationMap = () => {
                             <div className="relative">
                                 <img src={selected.image} alt={selected.title} loading="lazy" width={512} height={512} className="w-full h-64 object-cover" />
                                 <div className="absolute top-4 left-4 flex gap-2">
-                                    <Badge style={{background: TYPE_META[selected.type].color}} className="text-white border-0 shadow-soft">
-                                        {TYPE_META[selected.type].icon} {TYPE_META[selected.type].label}
+                                    <Badge style={{background: TYPE_META[selected.type]?.color || "#ccc"}} className="text-white border-0 shadow-soft">
+                                        {TYPE_META[selected.type]?.icon || "📦"} {TYPE_META[selected.type]?.label || "Вещ"}
                                     </Badge>
-                                    <Badge className={`border-0 shadow-soft ${STATUS_META[selected.status].className}`}>{STATUS_META[selected.status].label}</Badge>
+                                    {STATUS_META[selected.status] && (
+                                        <Badge className={`border-0 shadow-soft ${STATUS_META[selected.status].className}`}>
+                                            {STATUS_META[selected.status].label}
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
 
