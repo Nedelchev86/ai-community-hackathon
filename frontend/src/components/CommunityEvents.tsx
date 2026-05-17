@@ -3,12 +3,12 @@ import {Card} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Calendar} from "@/components/ui/calendar";
-import {Clock, MapPin, Users, CheckCircle2, Leaf, Heart, Calendar as CalendarIcon, Plus} from "lucide-react";
+import {Clock, MapPin, Users, CheckCircle2, Leaf, Heart, Calendar as CalendarIcon, Plus, Edit, Trash2} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
 import {toast} from "sonner";
-import { getEvents, createEvent, joinEvent } from "@/lib/api";
+import { getEvents, createEvent, joinEvent, updateEvent, deleteEvent } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,10 @@ export default function CommunityEvents() {
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    
+    // Edit state
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingEvent, setEditingEvent] = useState<any>(null);
 
     // Form state
     const [newEvent, setNewEvent] = useState({
@@ -107,6 +111,50 @@ export default function CommunityEvents() {
         }
     };
 
+    const handleEditClick = (event: any) => {
+        setEditingEvent({
+            ...event,
+            dateStr: event.date.toISOString().split("T")[0],
+            timeStr: event.date.toTimeString().slice(0, 5)
+        });
+        setIsEditDialogOpen(true);
+    };
+
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const token = localStorage.getItem("access_token");
+            const dt = new Date(`${editingEvent.dateStr}T${editingEvent.timeStr}`);
+            const payload = {
+                title: editingEvent.title,
+                description: editingEvent.description,
+                category: editingEvent.category,
+                location: editingEvent.location,
+                date: dt.toISOString(),
+                maxParticipants: Number(editingEvent.maxParticipants),
+                imageUrl: editingEvent.imageUrl
+            };
+            await updateEvent(editingEvent.id, payload, token!);
+            toast.success("Събитието е обновено успешно!");
+            setIsEditDialogOpen(false);
+            fetchEvents();
+        } catch (error: any) {
+            toast.error("Грешка при обновяване.");
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!window.confirm("Сигурни ли сте, че искате да изтриете събитието?")) return;
+        try {
+            const token = localStorage.getItem("access_token");
+            await deleteEvent(id, token!);
+            toast.success("Събитието е изтрито.");
+            fetchEvents();
+        } catch (error: any) {
+            toast.error("Грешка при изтриване.");
+        }
+    };
+
     const visibleEvents = events.sort((a, b) => a.date.getTime() - b.date.getTime());
     
     // Check if user is participating
@@ -158,8 +206,10 @@ export default function CommunityEvents() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Локация</Label>
-                                    <Input required value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} placeholder="Морска градина" />
+                                    <Label>Локация (Адрес, Парк и др.)</Label>
+                                    <div className="flex gap-2">
+                                        <Input required value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} placeholder="Морска градина, до фонтана" />
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -189,6 +239,68 @@ export default function CommunityEvents() {
                         </DialogContent>
                     </Dialog>
                 )}
+
+                {/* Edit Dialog */}
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                            <DialogTitle>Редактирай събитие</DialogTitle>
+                        </DialogHeader>
+                        {editingEvent && (
+                            <form onSubmit={handleUpdate} className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Заглавие</Label>
+                                    <Input required value={editingEvent.title} onChange={e => setEditingEvent({...editingEvent, title: e.target.value})} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Описание</Label>
+                                    <Textarea required value={editingEvent.description} onChange={e => setEditingEvent({...editingEvent, description: e.target.value})} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Дата</Label>
+                                        <Input type="date" required value={editingEvent.dateStr} onChange={e => setEditingEvent({...editingEvent, dateStr: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Час</Label>
+                                        <Input type="time" required value={editingEvent.timeStr} onChange={e => setEditingEvent({...editingEvent, timeStr: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Локация (Адрес, Парк и др.)</Label>
+                                    <Input required value={editingEvent.location} onChange={e => setEditingEvent({...editingEvent, location: e.target.value})} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Категория</Label>
+                                        <Select value={editingEvent.category} onValueChange={(val) => setEditingEvent({...editingEvent, category: val})}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Избери" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ecology">Екология</SelectItem>
+                                                <SelectItem value="social">Социални</SelectItem>
+                                                <SelectItem value="education">Образование</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Макс. участници</Label>
+                                        <Input type="number" required min="1" value={editingEvent.maxParticipants} onChange={e => setEditingEvent({...editingEvent, maxParticipants: Number(e.target.value)})} />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Снимка (URL)</Label>
+                                    <Input type="url" value={editingEvent.imageUrl || ""} onChange={e => setEditingEvent({...editingEvent, imageUrl: e.target.value})} />
+                                </div>
+                                <DialogFooter>
+                                    <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Отказ</Button>
+                                    <Button type="submit">Запази промените</Button>
+                                </DialogFooter>
+                            </form>
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="grid lg:grid-cols-[auto_1fr] gap-8 items-start">
@@ -240,18 +352,39 @@ export default function CommunityEvents() {
                                 const style = TYPE_STYLES[event.category as keyof typeof TYPE_STYLES] || TYPE_STYLES.ecology;
                                 const participantCount = event.participants?.length || 0;
                                 const isFull = participantCount >= event.maxParticipants;
+                                const isOrganizer = String(event.organizer?.id) === String(user?.id);
 
                                 return (
                                     <motion.div key={event.id} initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: idx * 0.1}}>
                                         <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors shadow-none hover:shadow-soft">
                                             {event.imageUrl && (
-                                                <div className="w-full h-48 md:h-64 overflow-hidden">
+                                                <div className="w-full h-48 md:h-64 overflow-hidden relative">
                                                     <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+                                                    {isOrganizer && (
+                                                        <div className="absolute top-2 right-2 flex gap-2">
+                                                            <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/90 hover:bg-white" onClick={() => handleEditClick(event)}>
+                                                                <Edit className="w-4 h-4 text-blue-600" />
+                                                            </Button>
+                                                            <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(event.id)}>
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
-                                            <div className="p-6 flex flex-col md:flex-row gap-6">
+                                            <div className="p-6 flex flex-col md:flex-row gap-6 relative">
+                                                {!event.imageUrl && isOrganizer && (
+                                                    <div className="absolute top-4 right-4 flex gap-2">
+                                                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleEditClick(event)}>
+                                                            <Edit className="w-4 h-4 text-blue-600" />
+                                                        </Button>
+                                                        <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(event.id)}>
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
                                                 <div className="flex-1 space-y-4">
-                                                    <div className="flex flex-wrap items-center gap-2">
+                                                    <div className="flex flex-wrap items-center gap-2 pr-16">
                                                         <Badge variant="secondary" className={`${style.bg} ${style.color} border-none flex items-center gap-1`}>
                                                             {style.icon} {event.category === "ecology" ? "Екология" : event.category === "social" ? "Социални" : "Образование"}
                                                         </Badge>
@@ -262,7 +395,7 @@ export default function CommunityEvents() {
                                                     </div>
 
                                                     <div>
-                                                        <h3 className="text-2xl font-bold mb-2">{event.title}</h3>
+                                                        <h3 className="text-2xl font-bold mb-2 pr-16">{event.title}</h3>
                                                         <p className="text-muted-foreground">{event.description}</p>
                                                     </div>
 

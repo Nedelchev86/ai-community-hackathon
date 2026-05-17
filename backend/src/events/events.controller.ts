@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, ParseIntPipe, Patch, Delete } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -18,9 +18,20 @@ export class EventsController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Patch(':id')
+  async updateEvent(@Request() req, @Param('id', ParseIntPipe) eventId: number, @Body() body: any) {
+    return this.eventsService.updateEvent(req.user.userId, eventId, body);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Delete(':id')
+  async deleteEvent(@Request() req, @Param('id', ParseIntPipe) eventId: number) {
+    return this.eventsService.deleteEvent(req.user.userId, eventId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Post(':id/join')
   async joinEvent(@Request() req, @Param('id', ParseIntPipe) eventId: number) {
     return this.eventsService.joinEvent(req.user.userId, eventId);
   }
 }
-

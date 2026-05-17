@@ -3,7 +3,7 @@ import {Link} from "react-router-dom";
 import {Card} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
-import {Star, Package, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info, MessageCircle} from "lucide-react";
+import {Star, Package, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info, MessageCircle, Calendar as CalendarIcon} from "lucide-react";
 import {useAuth} from "@/contexts/AuthContext";
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter} from "@/components/ui/dialog";
 import {Input} from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {toast} from "sonner";
 import {MapContainer, TileLayer, Marker, useMapEvents} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, getEvents } from "@/lib/api";
 
 import EcoCalculator from "@/components/EcoCalculator";
 import Gamification from "@/components/Gamification";
@@ -63,6 +63,7 @@ const Profile = () => {
     const [myRequests, setMyRequests] = useState<Exchange[]>([]);
     const [receivedRequests, setReceivedRequests] = useState<Exchange[]>([]);
     const [myReviews, setMyReviews] = useState<any[]>([]);
+    const [myEvents, setMyEvents] = useState<any[]>([]);
 
     const [editingDonation, setEditingDonation] = useState<Donation | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -97,7 +98,15 @@ const Profile = () => {
             .then((data) => setMyReviews(Array.isArray(data) ? data : []))
             .catch(console.error);
 
-    }, [token]);
+        getEvents()
+            .then((data) => {
+                if (Array.isArray(data) && user) {
+                    setMyEvents(data.filter(e => String(e.organizer?.id) === String(user.id)));
+                }
+            })
+            .catch(console.error);
+
+    }, [token, user]);
 
     useEffect(() => {
         fetchData();
@@ -254,11 +263,51 @@ const Profile = () => {
                 </Card>
 
                 <Tabs defaultValue="listings" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-8">
+                    <TabsList className="grid w-full grid-cols-3 max-w-[500px] mb-8">
                         <TabsTrigger value="listings">Моите обяви ({myDonations.length})</TabsTrigger>
                         <TabsTrigger value="requests">Заявки ({myRequests.length + receivedRequests.length})</TabsTrigger>
+                        <TabsTrigger value="events">Събития ({myEvents.length})</TabsTrigger>
                     </TabsList>
                     
+                    <TabsContent value="events" className="pt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {myEvents.map((e) => (
+                                <Card key={e.id} className="p-4 border-2 hover:border-primary/20 transition-all flex flex-col justify-between group">
+                                    <div>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex flex-col gap-1">
+                                                <h3 className="font-bold group-hover:text-primary transition-colors">{e.title}</h3>
+                                            </div>
+                                            <Badge variant="outline">{e.category === "ecology" ? "Екология" : e.category === "social" ? "Социални" : "Образование"}</Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{e.description}</p>
+                                        <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+                                            <CalendarIcon className="w-4 h-4" />
+                                            {new Date(e.date).toLocaleDateString("bg-BG", {month: "short", day: "numeric"})}
+                                            <span className="ml-2 flex items-center gap-1"><Users className="w-4 h-4"/> {e.participants?.length || 0} / {e.maxParticipants}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-4 pt-4 border-t">
+                                        <Link to="/events" className="w-full">
+                                            <Button variant="outline" size="sm" className="w-full">
+                                                <Edit className="w-4 h-4 mr-2" /> Към събитията
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            ))}
+                            {myEvents.length === 0 && (
+                                <Card className="p-12 border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground col-span-full">
+                                    <CalendarIcon className="w-12 h-12 mb-4 opacity-20" />
+                                    <p>Все още не сте създали събития.</p>
+                                    <Link to="/events" className="mt-4">
+                                        <Button variant="outline">Създай първото си събитие</Button>
+                                    </Link>
+                                </Card>
+                            )}
+                        </div>
+                    </TabsContent>
+
                     <TabsContent value="listings" className="pt-2">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {myDonations.map((d) => (
