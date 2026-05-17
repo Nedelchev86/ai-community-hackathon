@@ -24,6 +24,46 @@ model User {
   messages         Message[]
   eventsOrganized  Event[]
   eventsParticipating EventParticipant[]
+  eventComments    EventComment[]
+  eventSupports    EventSupport[]
+  stories          Story[]
+  storyComments    StoryComment[]
+  storySupports    StorySupport[]
+}
+
+model Story {
+  id          Int            @id @default(autoincrement())
+  title       String
+  content     String
+  imageUrl    String?
+  tags        String         // Stored as comma-separated values
+  authorId    Int
+  author      User           @relation(fields: [authorId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  comments    StoryComment[]
+  supports    StorySupport[]
+}
+
+model StoryComment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  storyId   Int
+  userId    Int
+  story     Story    @relation(fields: [storyId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model StorySupport {
+  id        Int      @id @default(autoincrement())
+  storyId   Int
+  userId    Int
+  story     Story    @relation(fields: [storyId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([storyId, userId])
 }
 
 model Event {
@@ -42,9 +82,32 @@ model Event {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   participants    EventParticipant[]
+  comments        EventComment[]
+  supports        EventSupport[]
 }
 
 model EventParticipant {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  userId    Int
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+model EventComment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  eventId   Int
+  userId    Int
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model EventSupport {
   id        Int      @id @default(autoincrement())
   eventId   Int
   userId    Int

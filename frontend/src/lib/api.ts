@@ -53,3 +53,71 @@ export async function joinEvent(eventId: number, token: string) {
     if (!res.ok) throw new Error("Failed to join event");
     return res.json();
 }
+
+export async function addEventComment(eventId: number, content: string, token: string) {
+    const res = await fetch(`${API_BASE}/events/${eventId}/comments`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content }),
+    });
+    if (!res.ok) throw new Error("Failed to add comment");
+    return res.json();
+}
+
+export async function toggleEventSupport(eventId: number, token: string) {
+    const res = await fetch(`${API_BASE}/events/${eventId}/support`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    if (!res.ok) throw new Error("Failed to toggle support");
+    return res.json();
+}
+
+export async function getStories() {
+    const res = await fetch(`${API_BASE}/stories`);
+    if (!res.ok) throw new Error("Failed to fetch stories");
+    return res.json();
+}
+
+export async function createStory(data: any, token: string) {
+    const res = await fetch(`${API_BASE}/stories`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to create story");
+    return res.json();
+}
+
+export async function addStoryComment(storyId: number, content: string, token: string) {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/comments`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content }),
+    });
+    if (!res.ok) throw new Error("Failed to add comment");
+    return res.json();
+}
+
+export async function toggleStorySupport(storyId: number, token: string) {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/support`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    if (!res.ok) throw new Error("Failed to toggle support");
+    return res.json();
+}
+

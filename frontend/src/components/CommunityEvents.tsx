@@ -3,10 +3,10 @@ import {Card} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Calendar} from "@/components/ui/calendar";
-import {Clock, MapPin, Users, CheckCircle2, Leaf, Heart, Calendar as CalendarIcon, Plus, Edit, Trash2} from "lucide-react";
+import {Clock, MapPin, Users, CheckCircle2, Leaf, Heart, Calendar as CalendarIcon, Plus, Edit, Trash2, Map, MessageSquare, ThumbsUp, Send} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
 import {toast} from "sonner";
-import { getEvents, createEvent, joinEvent, updateEvent, deleteEvent } from "@/lib/api";
+import { getEvents, createEvent, joinEvent, updateEvent, deleteEvent, addEventComment, toggleEventSupport } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ const LocationPicker = ({position, setPosition}: {position: [number, number] | n
 
 export default function CommunityEvents() {
     const { user } = useAuth();
-    const [date, setDate] = useState<Date | undefined>(new Date());
+    const [date, setDate] = useState<Date | undefined>();
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -52,6 +52,10 @@ export default function CommunityEvents() {
     // Participants Dialog
     const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false);
     const [activeEventParticipants, setActiveEventParticipants] = useState<any[]>([]);
+
+    // Comments State
+    const [expandedComments, setExpandedComments] = useState<Record<number, boolean>>({});
+    const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
 
     // Form state
     const [newEvent, setNewEvent] = useState({
@@ -192,7 +196,45 @@ export default function CommunityEvents() {
         setParticipantsDialogOpen(true);
     };
 
-    const visibleEvents = events.sort((a, b) => a.date.getTime() - b.date.getTime());
+    const toggleSupport = async (eventId: number) => {
+        if (!user) {
+            toast.error("Моля, влезте в профила си, за да подкрепите събитието.");
+            return;
+        }
+        try {
+            const token = localStorage.getItem("access_token");
+            await toggleEventSupport(eventId, token!);
+            fetchEvents();
+        } catch (error) {
+            toast.error("Грешка при подкрепа");
+        }
+    };
+
+    const submitComment = async (eventId: number) => {
+        if (!user) {
+            toast.error("Моля, влезте в профила си, за да коментирате.");
+            return;
+        }
+        const content = commentInputs[eventId]?.trim();
+        if (!content) return;
+
+        try {
+            const token = localStorage.getItem("access_token");
+            await addEventComment(eventId, content, token!);
+            setCommentInputs(prev => ({...prev, [eventId]: ""}));
+            fetchEvents();
+            toast.success("Коментарът е добавен.");
+        } catch (error) {
+            toast.error("Грешка при добавяне на коментар.");
+        }
+    };
+
+    const visibleEvents = events
+        .filter(event => {
+            if (!date) return true;
+            return event.date.toDateString() === date.toDateString();
+        })
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
     
     // Check if user is participating
     const isUserParticipating = (event: any) => {
@@ -409,8 +451,8 @@ export default function CommunityEvents() {
                         modifiers={{
                             hasEvent: events.map((e) => e.date),
                         }}
-                        modifiersStyles={{
-                            hasEvent: {fontWeight: "bold", textDecoration: "underline", color: "hsl(var(--primary))"},
+                        modifiersClassNames={{
+                            hasEvent: "font-bold underline decoration-primary decoration-2 underline-offset-4",
                         }}
                     />
                     <div className="mt-6 pt-6 border-t border-border">
@@ -436,10 +478,23 @@ export default function CommunityEvents() {
 
                 {/* Events Feed */}
                 <div className="space-y-4">
+                    {date && (
+                        <div className="flex justify-between items-center bg-muted/50 p-3 rounded-lg border">
+                            <span className="text-sm font-medium">Събития за {date.toLocaleDateString("bg-BG", {dateStyle: "medium"})}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setDate(undefined)}>Изчисти филтъра</Button>
+                        </div>
+                    )}
                     {loading ? (
                          <div className="text-center py-10 text-muted-foreground">Зареждане на събития...</div>
-                    ) : events.length === 0 ? (
-                        <div className="text-center py-10 text-muted-foreground">Няма намерени събития. Бъди първият, който ще създаде!</div>
+                    ) : visibleEvents.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground">
+                            {date ? "Няма събития за избраната дата." : "Няма намерени събития. Бъди първият, който ще създаде!"}
+                            {date && (
+                                <div className="mt-4">
+                                    <Button variant="outline" onClick={() => setDate(undefined)}>Покажи всички</Button>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <AnimatePresence>
                             {visibleEvents.map((event, idx) => {
@@ -448,6 +503,11 @@ export default function CommunityEvents() {
                                 const participantCount = event.participants?.length || 0;
                                 const isFull = participantCount >= event.maxParticipants;
                                 const isOrganizer = String(event.organizer?.id) === String(user?.id);
+
+                                const hasSupported = user && event.supports?.some((s: any) => String(s.userId) === String(user.id));
+                                const supportCount = event.supports?.length || 0;
+                                const comments = event.comments || [];
+                                const isCommentsExpanded = expandedComments[event.id];
 
                                 return (
                                     <motion.div key={event.id} initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: idx * 0.1}}>
@@ -503,9 +563,11 @@ export default function CommunityEvents() {
                                                                     href={`https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`} 
                                                                     target="_blank" 
                                                                     rel="noopener noreferrer"
-                                                                    className="text-blue-500 hover:underline text-xs ml-1"
+                                                                    className="flex items-center gap-1 text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors px-2 py-1 rounded-md ml-2 border border-blue-200"
+                                                                    title="Виж на картата"
                                                                 >
-                                                                    (Виж на карта)
+                                                                    <Map className="w-4 h-4" />
+                                                                    <span>Карта</span>
                                                                 </a>
                                                             )}
                                                         </div>
@@ -516,9 +578,92 @@ export default function CommunityEvents() {
                                                             <Users className="w-4 h-4 text-primary" /> {participantCount} / {event.maxParticipants} записани
                                                         </div>
                                                     </div>
+
+                                                    {/* Interactions: Likes & Comments count */}
+                                                    <div className="flex items-center gap-4 pt-4 border-t border-border/50">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm" 
+                                                            className={`flex items-center gap-2 ${hasSupported ? 'text-rose-500 hover:text-rose-600 bg-rose-50' : 'text-muted-foreground hover:text-foreground'}`}
+                                                            onClick={() => toggleSupport(event.id)}
+                                                        >
+                                                            <ThumbsUp className={`w-4 h-4 ${hasSupported ? 'fill-current' : ''}`} /> 
+                                                            {supportCount} Подкрепи
+                                                        </Button>
+
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm" 
+                                                            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                                                            onClick={() => setExpandedComments(prev => ({...prev, [event.id]: !prev[event.id]}))}
+                                                        >
+                                                            <MessageSquare className="w-4 h-4" /> 
+                                                            {comments.length} Коментара
+                                                        </Button>
+                                                    </div>
+
+                                                    {/* Comments Section */}
+                                                    {isCommentsExpanded && (
+                                                        <motion.div initial={{opacity: 0, height: 0}} animate={{opacity: 1, height: "auto"}} className="bg-muted/30 p-4 rounded-xl space-y-4">
+                                                            {/* Add comment */}
+                                                            {user ? (
+                                                                <div className="flex gap-2">
+                                                                    <div className="w-8 h-8 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center border shrink-0">
+                                                                        {user.avatarUrl ? (
+                                                                            <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <span className="font-bold text-primary text-xs">{user.name ? user.name[0].toUpperCase() : "?"}</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex-1 flex gap-2">
+                                                                        <Input 
+                                                                            placeholder="Напиши коментар..." 
+                                                                            className="h-8 text-sm"
+                                                                            value={commentInputs[event.id] || ""}
+                                                                            onChange={(e) => setCommentInputs(prev => ({...prev, [event.id]: e.target.value}))}
+                                                                            onKeyDown={(e) => e.key === 'Enter' && submitComment(event.id)}
+                                                                        />
+                                                                        <Button size="sm" className="h-8 px-3" onClick={() => submitComment(event.id)}>
+                                                                            <Send className="w-3 h-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm text-muted-foreground text-center pb-2">
+                                                                    Трябва да влезете в профила си, за да коментирате.
+                                                                </div>
+                                                            )}
+
+                                                            {/* Comments List */}
+                                                            <div className="space-y-3 pt-2">
+                                                                {comments.length === 0 ? (
+                                                                    <div className="text-sm text-muted-foreground text-center">Няма коментари. Бъдете първи!</div>
+                                                                ) : (
+                                                                    comments.map((comment: any) => (
+                                                                        <div key={comment.id} className="flex gap-3 text-sm">
+                                                                            <div className="w-8 h-8 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center border shrink-0">
+                                                                                {comment.user?.avatarUrl ? (
+                                                                                    <img src={comment.user.avatarUrl} alt={comment.user.name} className="w-full h-full object-cover" />
+                                                                                ) : (
+                                                                                    <span className="font-bold text-primary text-xs">{comment.user?.name ? comment.user.name[0].toUpperCase() : "?"}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="bg-background border rounded-lg px-3 py-2 flex-1">
+                                                                                <div className="flex justify-between items-baseline mb-1">
+                                                                                    <span className="font-medium">{comment.user?.name || "Анонимен"}</span>
+                                                                                    <span className="text-[10px] text-muted-foreground">{new Date(comment.createdAt).toLocaleDateString("bg-BG")}</span>
+                                                                                </div>
+                                                                                <p className="text-muted-foreground">{comment.content}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))
+                                                                )}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
                                                 </div>
 
-                                                <div className="md:w-48 flex flex-col justify-center border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
+                                                <div className="md:w-48 flex flex-col justify-center border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6 shrink-0">
                                                     <div className="text-sm mb-4 text-center md:text-left">
                                                         <span className="text-muted-foreground">Организатор:</span>
                                                         <br />

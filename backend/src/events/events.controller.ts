@@ -34,4 +34,16 @@ export class EventsController {
   async joinEvent(@Request() req, @Param('id', ParseIntPipe) eventId: number) {
     return this.eventsService.joinEvent(req.user.userId, eventId);
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/comments')
+  async addComment(@Request() req, @Param('id', ParseIntPipe) eventId: number, @Body('content') content: string) {
+    return this.eventsService.addComment(req.user.userId, eventId, content);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/support')
+  async toggleSupport(@Request() req, @Param('id', ParseIntPipe) eventId: number) {
+    return this.eventsService.toggleSupport(req.user.userId, eventId);
+  }
 }

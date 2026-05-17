@@ -18,6 +18,17 @@ export class EventsService {
             },
           },
         },
+        comments: {
+          include: {
+            user: {
+              select: { name: true, avatarUrl: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        supports: {
+          select: { userId: true },
+        },
       },
       orderBy: { date: 'asc' },
     });
@@ -85,10 +96,10 @@ export class EventsService {
       throw new ForbiddenException('Only the organizer can delete this event');
     }
 
-    // Delete participants first
-    await this.prisma.eventParticipant.deleteMany({
-      where: { eventId },
-    });
+    // Delete related
+    await this.prisma.eventParticipant.deleteMany({ where: { eventId } });
+    await this.prisma.eventComment.deleteMany({ where: { eventId } });
+    await this.prisma.eventSupport.deleteMany({ where: { eventId } });
 
     return this.prisma.event.delete({
       where: { id: eventId },
@@ -119,6 +130,47 @@ export class EventsService {
       return { success: true };
     } catch (error) {
       throw new BadRequestException('Already joined this event');
+    }
+  }
+
+  async addComment(userId: number, eventId: number, content: string) {
+    if (!content) {
+      throw new BadRequestException('Content is required');
+    }
+    const event = await this.prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    return this.prisma.eventComment.create({
+      data: {
+        content,
+        eventId,
+        userId,
+      },
+      include: {
+        user: { select: { name: true, avatarUrl: true } },
+      },
+    });
+  }
+
+  async toggleSupport(userId: number, eventId: number) {
+    const event = await this.prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    const existing = await this.prisma.eventSupport.findUnique({
+      where: {
+        eventId_userId: { eventId, userId },
+      },
+    });
+    if (existing) {
+      await this.prisma.eventSupport.delete({ where: { id: existing.id } });
+      return { supported: false };
+    } else {
+      await this.prisma.eventSupport.create({
+        data: { eventId, userId },
+      });
+      return { supported: true };
     }
   }
 }

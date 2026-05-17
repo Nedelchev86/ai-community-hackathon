@@ -9,6 +9,7 @@ import { ExchangesModule } from './exchanges/exchanges.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { MessagesModule } from './messages/messages.module';
 import { EventsModule } from './events/events.module';
+import { StoriesModule } from './stories/stories.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { EventsModule } from './events/events.module';
     ReviewsModule,
     MessagesModule,
     EventsModule,
+    StoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

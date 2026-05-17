@@ -1,5 +1,5 @@
 import {Heart, PackagePlus, Menu, LogOut, Settings, User, Star, UserPlus, LogIn, HandHeart, HeartHandshake, MapPin} from "lucide-react";
-import {Link} from "react-router-dom";
+import {Link, useLocation} from "react-router-dom";
 import {Button} from "@/components/ui/button";
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
@@ -11,6 +11,7 @@ import { useState } from "react";
 export function Header() {
     const {user, isAuthenticated, logout} = useAuth();
     const [isOpen, setIsOpen] = useState(false);
+    const location = useLocation();
 
     const navLinks = [
         { href: "/#how", label: "Как работи", isAnchor: true },
@@ -24,15 +25,16 @@ export function Header() {
 
     const NavItems = ({ mobile = false, onClick = () => {} }: { mobile?: boolean, onClick?: () => void }) => (
         <>
-            {navLinks.map((link) => (
-                link.isAnchor ? (
+            {navLinks.map((link) => {
+                const isActive = location.pathname === link.href;
+                return link.isAnchor ? (
                     <a
                         key={link.label}
                         href={link.href}
                         onClick={onClick}
-                        className={`px-4 py-2 text-sm font-medium transition-all rounded-full hover:bg-accent/50 ${
-                            mobile ? "w-full text-left" : "text-muted-foreground hover:text-foreground"
-                        } ${link.className || ""}`}
+                        className={`px-4 py-2 text-sm transition-all rounded-full hover:bg-accent/50 ${
+                            isActive ? "bg-accent/80 font-bold text-foreground" : "font-medium"
+                        } ${mobile ? "w-full text-left" : (!isActive ? "text-muted-foreground hover:text-foreground" : "")} ${link.className || ""}`}
                     >
                         {link.label}
                     </a>
@@ -41,15 +43,15 @@ export function Header() {
                         key={link.label}
                         to={link.href}
                         onClick={onClick}
-                        className={`px-4 py-2 text-sm font-medium transition-all rounded-full hover:bg-accent/50 flex items-center gap-2 ${
-                            mobile ? "w-full text-left" : "text-muted-foreground hover:text-foreground"
-                        } ${link.className || ""}`}
+                        className={`px-4 py-2 text-sm transition-all rounded-full hover:bg-accent/50 flex items-center gap-2 ${
+                            isActive ? "bg-accent/80 font-bold text-foreground" : "font-medium"
+                        } ${mobile ? "w-full text-left" : (!isActive ? "text-muted-foreground hover:text-foreground" : "")} ${link.className || ""}`}
                     >
                         {link.icon && <link.icon className="w-4 h-4" />}
                         {link.label}
                     </Link>
-                )
-            ))}
+                );
+            })}
         </>
     );
 
