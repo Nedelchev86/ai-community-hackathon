@@ -12,7 +12,11 @@ export class EventsService {
           select: { name: true, email: true, id: true, avatarUrl: true },
         },
         participants: {
-          select: { userId: true },
+          include: {
+            user: {
+              select: { name: true, email: true, id: true, avatarUrl: true },
+            },
+          },
         },
       },
       orderBy: { date: 'asc' },
@@ -28,6 +32,8 @@ export class EventsService {
         imageUrl: data.imageUrl,
         date: new Date(data.date),
         location: data.location,
+        lat: data.lat ? parseFloat(data.lat) : null,
+        lng: data.lng ? parseFloat(data.lng) : null,
         maxParticipants: data.maxParticipants,
         organizerId: userId,
       },
@@ -59,6 +65,8 @@ export class EventsService {
         imageUrl: data.imageUrl,
         date: data.date ? new Date(data.date) : undefined,
         location: data.location,
+        lat: data.lat ? parseFloat(data.lat) : null,
+        lng: data.lng ? parseFloat(data.lng) : null,
         maxParticipants: data.maxParticipants,
       },
     });

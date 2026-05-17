@@ -34,6 +34,8 @@ model Event {
   imageUrl        String?
   date            DateTime
   location        String
+  lat             Float?
+  lng             Float?
   maxParticipants Int
   organizerId     Int
   organizer       User               @relation(fields: [organizerId], references: [id])

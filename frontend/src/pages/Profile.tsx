@@ -3,7 +3,7 @@ import {Link} from "react-router-dom";
 import {Card} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
-import {Star, Package, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info, MessageCircle, Calendar as CalendarIcon} from "lucide-react";
+import {Star, Package, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info, MessageCircle, Calendar as CalendarIcon, Users} from "lucide-react";
 import {useAuth} from "@/contexts/AuthContext";
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter} from "@/components/ui/dialog";
 import {Input} from "@/components/ui/input";

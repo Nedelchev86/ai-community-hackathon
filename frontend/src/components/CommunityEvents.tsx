@@ -13,11 +13,29 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {MapContainer, TileLayer, Marker, useMapEvents} from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const TYPE_STYLES = {
     ecology: {color: "text-emerald-600", bg: "bg-emerald-100", icon: <Leaf className="w-4 h-4" />},
     social: {color: "text-rose-600", bg: "bg-rose-100", icon: <Heart className="w-4 h-4" />},
     education: {color: "text-blue-600", bg: "bg-blue-100", icon: <Users className="w-4 h-4" />},
+};
+
+const LocationPicker = ({position, setPosition}: {position: [number, number] | null; setPosition: (p: [number, number]) => void}) => {
+    useMapEvents({
+        click(e) {
+            setPosition([e.latlng.lat, e.latlng.lng]);
+        },
+    });
+    const icon = L.divIcon({
+        className: "",
+        html: `<div style="font-size:24px; line-height: 1; text-shadow: 0px 0px 3px rgba(255,255,255,0.8);">📍</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+    });
+    return position ? <Marker position={position} icon={icon} /> : null;
 };
 
 export default function CommunityEvents() {
@@ -31,6 +49,10 @@ export default function CommunityEvents() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<any>(null);
 
+    // Participants Dialog
+    const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false);
+    const [activeEventParticipants, setActiveEventParticipants] = useState<any[]>([]);
+
     // Form state
     const [newEvent, setNewEvent] = useState({
         title: "",
@@ -39,6 +61,9 @@ export default function CommunityEvents() {
         location: "",
         date: "",
         time: "",
+        lat: 42.6977,
+        lng: 23.3219,
+        hasMapLocation: false,
         maxParticipants: 50,
         imageUrl: ""
     });
@@ -95,6 +120,8 @@ export default function CommunityEvents() {
                 description: newEvent.description,
                 category: newEvent.category,
                 location: newEvent.location,
+                lat: newEvent.hasMapLocation ? newEvent.lat : null,
+                lng: newEvent.hasMapLocation ? newEvent.lng : null,
                 date: dt.toISOString(),
                 maxParticipants: Number(newEvent.maxParticipants),
                 imageUrl: newEvent.imageUrl || "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=60"
@@ -104,7 +131,7 @@ export default function CommunityEvents() {
             setIsDialogOpen(false);
             fetchEvents();
             setNewEvent({
-                title: "", description: "", category: "ecology", location: "", date: "", time: "", maxParticipants: 50, imageUrl: ""
+                title: "", description: "", category: "ecology", location: "", date: "", time: "", lat: 42.6977, lng: 23.3219, hasMapLocation: false, maxParticipants: 50, imageUrl: ""
             });
         } catch (error: any) {
             toast.error(error.message || "Грешка при създаване");
@@ -115,7 +142,10 @@ export default function CommunityEvents() {
         setEditingEvent({
             ...event,
             dateStr: event.date.toISOString().split("T")[0],
-            timeStr: event.date.toTimeString().slice(0, 5)
+            timeStr: event.date.toTimeString().slice(0, 5),
+            hasMapLocation: event.lat != null && event.lng != null,
+            lat: event.lat || 42.6977,
+            lng: event.lng || 23.3219,
         });
         setIsEditDialogOpen(true);
     };
@@ -130,6 +160,8 @@ export default function CommunityEvents() {
                 description: editingEvent.description,
                 category: editingEvent.category,
                 location: editingEvent.location,
+                lat: editingEvent.hasMapLocation ? editingEvent.lat : null,
+                lng: editingEvent.hasMapLocation ? editingEvent.lng : null,
                 date: dt.toISOString(),
                 maxParticipants: Number(editingEvent.maxParticipants),
                 imageUrl: editingEvent.imageUrl
@@ -153,6 +185,11 @@ export default function CommunityEvents() {
         } catch (error: any) {
             toast.error("Грешка при изтриване.");
         }
+    };
+
+    const openParticipants = (participants: any[]) => {
+        setActiveEventParticipants(participants.map(p => p.user));
+        setParticipantsDialogOpen(true);
     };
 
     const visibleEvents = events.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -182,7 +219,7 @@ export default function CommunityEvents() {
                                 <Plus className="w-4 h-4 mr-2" /> Добави събитие
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
+                        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Създай ново събитие</DialogTitle>
                             </DialogHeader>
@@ -207,9 +244,21 @@ export default function CommunityEvents() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Локация (Адрес, Парк и др.)</Label>
-                                    <div className="flex gap-2">
-                                        <Input required value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} placeholder="Морска градина, до фонтана" />
-                                    </div>
+                                    <Input required value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} placeholder="Морска градина, до фонтана" />
+                                </div>
+                                <div className="space-y-2 border p-4 rounded-md">
+                                    <Label className="flex items-center gap-2 mb-2">
+                                        <input type="checkbox" checked={newEvent.hasMapLocation} onChange={(e) => setNewEvent({...newEvent, hasMapLocation: e.target.checked})} />
+                                        Избери точна локация на картата
+                                    </Label>
+                                    {newEvent.hasMapLocation && (
+                                        <div className="h-[200px] w-full rounded-md overflow-hidden border">
+                                            <MapContainer center={[newEvent.lat, newEvent.lng]} zoom={6} scrollWheelZoom={true} style={{height: "100%", width: "100%"}}>
+                                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                <LocationPicker position={[newEvent.lat, newEvent.lng]} setPosition={(p) => setNewEvent({...newEvent, lat: p[0], lng: p[1]})} />
+                                            </MapContainer>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -242,7 +291,7 @@ export default function CommunityEvents() {
 
                 {/* Edit Dialog */}
                 <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                    <DialogContent className="sm:max-w-[500px]">
+                    <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Редактирай събитие</DialogTitle>
                         </DialogHeader>
@@ -269,6 +318,20 @@ export default function CommunityEvents() {
                                 <div className="space-y-2">
                                     <Label>Локация (Адрес, Парк и др.)</Label>
                                     <Input required value={editingEvent.location} onChange={e => setEditingEvent({...editingEvent, location: e.target.value})} />
+                                </div>
+                                <div className="space-y-2 border p-4 rounded-md">
+                                    <Label className="flex items-center gap-2 mb-2">
+                                        <input type="checkbox" checked={editingEvent.hasMapLocation} onChange={(e) => setEditingEvent({...editingEvent, hasMapLocation: e.target.checked})} />
+                                        Избери точна локация на картата
+                                    </Label>
+                                    {editingEvent.hasMapLocation && (
+                                        <div className="h-[200px] w-full rounded-md overflow-hidden border">
+                                            <MapContainer center={[editingEvent.lat, editingEvent.lng]} zoom={editingEvent.lat === 42.6977 ? 6 : 13} scrollWheelZoom={true} style={{height: "100%", width: "100%"}}>
+                                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                <LocationPicker position={[editingEvent.lat, editingEvent.lng]} setPosition={(p) => setEditingEvent({...editingEvent, lat: p[0], lng: p[1]})} />
+                                            </MapContainer>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -299,6 +362,38 @@ export default function CommunityEvents() {
                                 </DialogFooter>
                             </form>
                         )}
+                    </DialogContent>
+                </Dialog>
+
+                {/* Participants Dialog */}
+                <Dialog open={participantsDialogOpen} onOpenChange={setParticipantsDialogOpen}>
+                    <DialogContent className="sm:max-w-[400px]">
+                        <DialogHeader>
+                            <DialogTitle>Записани участници ({activeEventParticipants.length})</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+                            {activeEventParticipants.length === 0 ? (
+                                <p className="text-center text-muted-foreground">Все още няма записани участници.</p>
+                            ) : (
+                                activeEventParticipants.map(participant => (
+                                    <div key={participant.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center border shrink-0">
+                                            {participant.avatarUrl ? (
+                                                <img src={participant.avatarUrl} alt={participant.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="font-bold text-primary">{participant.name ? participant.name[0].toUpperCase() : "?"}</span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-sm">{participant.name || "Анонимен"}</span>
+                                            {user && participant.id === parseInt(user.id) && (
+                                                <span className="text-xs text-muted-foreground">(Ти)</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -401,9 +496,23 @@ export default function CommunityEvents() {
 
                                                     <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
                                                         <div className="flex items-center gap-1 text-foreground">
-                                                            <MapPin className="w-4 h-4 text-primary" /> {event.location}
+                                                            <MapPin className="w-4 h-4 text-primary" /> 
+                                                            {event.location} 
+                                                            {event.lat && event.lng && (
+                                                                <a 
+                                                                    href={`https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-blue-500 hover:underline text-xs ml-1"
+                                                                >
+                                                                    (Виж на карта)
+                                                                </a>
+                                                            )}
                                                         </div>
-                                                        <div className="flex items-center gap-1 text-foreground">
+                                                        <div 
+                                                            className="flex items-center gap-1 text-foreground cursor-pointer hover:text-primary transition-colors bg-muted/50 px-2 py-1 rounded-md"
+                                                            onClick={() => openParticipants(event.participants || [])}
+                                                        >
                                                             <Users className="w-4 h-4 text-primary" /> {participantCount} / {event.maxParticipants} записани
                                                         </div>
                                                     </div>
