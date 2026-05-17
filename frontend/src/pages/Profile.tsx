@@ -3,9 +3,7 @@ import {Link} from "react-router-dom";
 import {Card} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
-import {Progress} from "@/components/ui/progress";
-import {ArrowLeft, Star, Target, MessageSquare, Package, Heart, Quote, Edit, Trash2, HandHeart, Check, CheckCircle2} from "lucide-react";
-import {useExchanges, computeProfileStats, CATEGORY_LABEL, getReceivedReviews} from "@/lib/reviewsStore";
+import {Star, Package, Quote, Edit, Trash2, HandHeart, Check, CheckCircle2, User, Phone, MapPin, Info} from "lucide-react";
 import {useAuth} from "@/contexts/AuthContext";
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter} from "@/components/ui/dialog";
 import {Input} from "@/components/ui/input";
@@ -20,12 +18,6 @@ import { API_BASE } from "@/lib/api";
 
 import EcoCalculator from "@/components/EcoCalculator";
 import Gamification from "@/components/Gamification";
-
-const CATEGORY_ICONS = {
-    accuracy: Target,
-    communication: MessageSquare,
-    condition: Package,
-} as const;
 
 interface Donation {
     id: number;
@@ -80,25 +72,21 @@ const Profile = () => {
     const fetchData = useCallback(() => {
         if (!token) return;
         
-        // Fetch donations
         fetch(`${API_BASE}/donations/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setMyDonations(Array.isArray(data) ? data : []))
             .catch(console.error);
 
-        // Fetch sent requests
         fetch(`${API_BASE}/exchanges/my-requests`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setMyRequests(Array.isArray(data) ? data : []))
             .catch(console.error);
 
-        // Fetch received requests
         fetch(`${API_BASE}/exchanges/received-requests`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setReceivedRequests(Array.isArray(data) ? data : []))
             .catch(console.error);
 
-        // Fetch real reviews
         fetch(`${API_BASE}/reviews/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setMyReviews(Array.isArray(data) ? data : []))
@@ -201,48 +189,74 @@ const Profile = () => {
         }
     };
 
-    // Replace fake stats with real review stats calculation
     const overall = myReviews.length ? myReviews.reduce((sum, r) => sum + r.rating, 0) / myReviews.length : 0;
     const statsCount = myReviews.length;
 
     return (
         <div className="min-h-screen bg-background">
             <main className="container py-12 max-w-4xl space-y-8">
-                {/* Header card */}
-                <Card className="p-8 border-2 shadow-soft">
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                        <div className="w-24 h-24 rounded-full bg-gradient-primary grid place-items-center text-4xl font-bold text-primary-foreground shadow-soft">{user?.username?.[0]?.toUpperCase() || "Т"}</div>
-                        <div className="flex-1 text-center sm:text-left">
-                            <h1 className="text-3xl font-bold mb-1">{user?.username || "Ти"}</h1>
-                            <p className="text-muted-foreground mb-3">Участник в общността · от {new Date().getFullYear()}</p>
-                            <div className="flex items-center justify-center sm:justify-start gap-2">
-                                <div className="flex items-center gap-1">
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <Star key={i} className={`w-5 h-5 ${i <= Math.round(overall) ? "fill-primary text-primary" : "text-muted"}`} />
-                                    ))}
+                <Card className="p-8 border-2 shadow-soft overflow-hidden relative">
+                    <div className="absolute top-0 right-0 p-4 opacity-5">
+                        <User className="w-48 h-48" />
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-8 relative z-10">
+                        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 shadow-soft shrink-0">
+                            {user?.avatarUrl ? (
+                                <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full bg-gradient-primary grid place-items-center text-5xl font-bold text-primary-foreground">
+                                    {user?.name?.[0]?.toUpperCase() || "Т"}
                                 </div>
-                                <span className="font-bold text-lg">{overall.toFixed(1)}</span>
-                                <span className="text-sm text-muted-foreground">({statsCount} отзива)</span>
+                            )}
+                        </div>
+                        <div className="flex-1 text-center sm:text-left space-y-4">
+                            <div>
+                                <h1 className="text-4xl font-black tracking-tight mb-1">{user?.name || "Ти"}</h1>
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-muted-foreground text-sm">
+                                    {user?.city && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {user.city}</span>}
+                                    {user?.phone && <span className="flex items-center gap-1"><Phone className="w-4 h-4" /> {user.phone}</span>}
+                                    <span className="flex items-center gap-1"><Star className="w-4 h-4" /> Участник от {new Date().getFullYear()}</span>
+                                </div>
+                            </div>
+                            
+                            {user?.bio && (
+                                <div className="bg-muted/50 p-4 rounded-xl text-sm italic border-l-4 border-primary/30">
+                                    "{user.bio}"
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-center sm:justify-start gap-3">
+                                <div className="flex items-center gap-1 bg-primary/10 px-3 py-1 rounded-full">
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <Star key={i} className={`w-4 h-4 ${i <= Math.round(overall) ? "fill-primary text-primary" : "text-muted"}`} />
+                                    ))}
+                                    <span className="font-bold text-primary ml-1">{overall.toFixed(1)}</span>
+                                </div>
+                                <span className="text-sm text-muted-foreground font-medium">({statsCount} отзива)</span>
                             </div>
                         </div>
-                        <Button className="bg-gradient-primary hover:opacity-90 shadow-soft">Редактирай</Button>
+                        <Link to="/settings">
+                            <Button className="bg-gradient-primary hover:opacity-90 shadow-soft">
+                                <Edit className="w-4 h-4 mr-2" /> Настройки
+                            </Button>
+                        </Link>
                     </div>
                 </Card>
 
                 <Tabs defaultValue="listings" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+                    <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-8">
                         <TabsTrigger value="listings">Моите обяви ({myDonations.length})</TabsTrigger>
                         <TabsTrigger value="requests">Заявки ({myRequests.length + receivedRequests.length})</TabsTrigger>
                     </TabsList>
                     
-                    <TabsContent value="listings" className="pt-4">
+                    <TabsContent value="listings" className="pt-2">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {myDonations.map((d) => (
-                                <Card key={d.id} className="p-4 border flex flex-col justify-between">
+                                <Card key={d.id} className="p-4 border-2 hover:border-primary/20 transition-all flex flex-col justify-between group">
                                     <div>
                                         <div className="flex justify-between items-start">
                                             <div className="flex flex-col gap-1">
-                                                <h3 className="font-bold">{d.title}</h3>
+                                                <h3 className="font-bold group-hover:text-primary transition-colors">{d.title}</h3>
                                                 <Badge variant={d.type === "need" ? "destructive" : "default"} className={`w-fit ${d.type === "need" ? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200" : "bg-green-100 text-green-700 hover:bg-green-200 border-green-200"}`}>
                                                     {d.type === "need" ? "🤝 Нужда" : "💚 Дарение"}
                                                 </Badge>
@@ -274,17 +288,28 @@ const Profile = () => {
                                     </div>
                                 </Card>
                             ))}
-                            {myDonations.length === 0 && <div className="text-muted-foreground p-4">Нямате активни обяви.</div>}
+                            {myDonations.length === 0 && (
+                                <Card className="p-12 border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground col-span-full">
+                                    <Package className="w-12 h-12 mb-4 opacity-20" />
+                                    <p>Нямате активни обяви.</p>
+                                    <Link to="/donate" className="mt-4">
+                                        <Button variant="outline">Добави първата си обява</Button>
+                                    </Link>
+                                </Card>
+                            )}
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="requests" className="pt-4 space-y-8">
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">Входящи заявки (Търсят от вас)</h3>
+                    <TabsContent value="requests" className="pt-2 space-y-8">
+                        <div className="space-y-4">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-lg bg-green-100 text-green-700 grid place-items-center"><Info className="w-4 h-4" /></span>
+                                Входящи заявки (Търсят от вас)
+                            </h3>
                             <div className="space-y-3">
-                                {receivedRequests.length === 0 && <p className="text-muted-foreground text-sm">Нямате входящи заявки.</p>}
+                                {receivedRequests.length === 0 && <Card className="p-6 text-muted-foreground text-sm border-dashed border-2">Нямате входящи заявки.</Card>}
                                 {receivedRequests.map(r => (
-                                    <Card key={r.id} className="p-4 border flex items-center justify-between gap-4">
+                                    <Card key={r.id} className="p-4 border-2 flex items-center justify-between gap-4">
                                         <div>
                                             <div className="font-bold text-sm">{r.donation.title}</div>
                                             <div className="text-xs text-muted-foreground">Поискано от: <span className="font-semibold text-foreground">{r.requester.name}</span></div>
@@ -307,12 +332,15 @@ const Profile = () => {
                             </div>
                         </div>
 
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">Изходящи заявки (Вие търсите)</h3>
+                        <div className="space-y-4">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 grid place-items-center"><HandHeart className="w-4 h-4" /></span>
+                                Изходящи заявки (Вие търсите)
+                            </h3>
                             <div className="space-y-3">
-                                {myRequests.length === 0 && <p className="text-muted-foreground text-sm">Нямате изходящи заявки.</p>}
+                                {myRequests.length === 0 && <Card className="p-6 text-muted-foreground text-sm border-dashed border-2">Нямате изходящи заявки.</Card>}
                                 {myRequests.map(r => (
-                                    <Card key={r.id} className="p-4 border flex items-center justify-between gap-4">
+                                    <Card key={r.id} className="p-4 border-2 flex items-center justify-between gap-4">
                                         <div>
                                             <div className="font-bold text-sm">{r.donation.title}</div>
                                             <div className="text-xs text-muted-foreground">Собственик: <span className="font-semibold text-foreground">{r.donation.user?.name}</span></div>
@@ -449,13 +477,9 @@ const Profile = () => {
                     </DialogContent>
                 </Dialog>
 
-                {/* Eco Calculator */}
                 <EcoCalculator />
-
-                {/* Gamification/Leveling */}
                 <Gamification />
 
-                {/* Recent reviews */}
                 <div>
                     <h2 className="text-2xl font-bold mb-4">Отзиви за теб</h2>
                     <div className="space-y-3">

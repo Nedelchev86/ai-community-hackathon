@@ -1,1 +1,1 @@
-export const API_BASE = "https://ai-community-hackathon-be.onrender.com";
+export const API_BASE = "http://localhost:3000";

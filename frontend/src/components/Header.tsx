@@ -62,7 +62,7 @@ export function Header() {
                                 <DropdownMenuTrigger asChild>
                                     <button className="outline-none focus:ring-2 focus:ring-primary rounded-full ring-offset-2 ring-offset-background transition-all">
                                         <Avatar className="w-10 h-10 border-2 border-primary/20 hover:border-primary transition-colors cursor-pointer">
-                                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} />
+                                            <AvatarImage src={user?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} />
                                             <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
                                         </Avatar>
                                     </button>
@@ -81,9 +81,11 @@ export function Header() {
                                             Моите обяви
                                         </Link>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="p-2 cursor-pointer">
-                                        <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
-                                        Настройки
+                                    <DropdownMenuItem asChild className="p-2 cursor-pointer">
+                                        <Link to="/settings" className="flex items-center w-full">
+                                            <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
+                                            Настройки
+                                        </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={logout} className="p-2 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">

@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Register from "./pages/Register.tsx";
 import Login from "./pages/Login.tsx";
 import Profile from "./pages/Profile.tsx";
+import Settings from "./pages/Settings.tsx";
 import Heroes from "./pages/Heroes.tsx";
 import Events from "./pages/Events.tsx";
 import WallOfHope from "./pages/WallOfHope.tsx";
@@ -37,6 +38,7 @@ const App = () => (
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/map" element={<MapPage />} />
                                 <Route path="/profile" element={<Profile />} />
+                                <Route path="/settings" element={<Settings />} />
                                 <Route path="/heroes" element={<Heroes />} />
                                 <Route path="/events" element={<Events />} />
                                 <Route path="/wall" element={<WallOfHope />} />

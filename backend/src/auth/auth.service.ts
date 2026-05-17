@@ -47,6 +47,10 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        city: user.city,
+        bio: user.bio,
       },
     };
   }
