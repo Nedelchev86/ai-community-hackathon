@@ -19,6 +19,7 @@ import Donate from "./pages/Donate.tsx";
 import Need from "./pages/Need.tsx";
 import {Header} from "./components/Header.tsx";
 import {AuthProvider} from "./contexts/AuthContext.tsx";
+import {GlobalChatNotifier} from "./components/GlobalChatNotifier.tsx";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
                 <BrowserRouter>
                     <div className="flex flex-col min-h-screen">
                         <Header />
+                        <GlobalChatNotifier />
                         <main className="flex-1 pt-[73px]">
                             <Routes>
                                 <Route path="/" element={<Index />} />

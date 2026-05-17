@@ -61,6 +61,7 @@ model Message {
   id         Int      @id @default(autoincrement())
   content    String
   createdAt  DateTime @default(now())
+  isRead     Boolean  @default(false)
   senderId   Int
   sender     User     @relation(fields: [senderId], references: [id])
   exchangeId Int

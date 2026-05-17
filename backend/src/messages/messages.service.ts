@@ -13,7 +13,6 @@ export class MessagesService {
 
     if (!exchange) throw new NotFoundException('Exchange not found');
 
-    // Only requester or donation owner can send messages
     if (exchange.requesterId !== userId && exchange.donation.userId !== userId) {
       throw new ForbiddenException('Not authorized to chat in this exchange');
     }
@@ -42,12 +41,46 @@ export class MessagesService {
       throw new ForbiddenException('Not authorized to view this chat');
     }
 
+    // Mark messages as read when opening the chat
+    await this.prisma.message.updateMany({
+      where: {
+        exchangeId,
+        senderId: { not: userId },
+        isRead: false,
+      },
+      data: { isRead: true },
+    });
+
     return this.prisma.message.findMany({
       where: { exchangeId },
       include: {
         sender: { select: { id: true, name: true, avatarUrl: true } },
       },
       orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async findUnread(userId: number) {
+    return this.prisma.message.findMany({
+      where: {
+        isRead: false,
+        senderId: { not: userId },
+        exchange: {
+          OR: [
+            { requesterId: userId },
+            { donation: { userId: userId } },
+          ],
+        },
+      },
+      include: {
+        sender: { select: { id: true, name: true, avatarUrl: true } },
+        exchange: {
+          include: {
+            donation: { select: { title: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }

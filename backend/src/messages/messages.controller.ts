@@ -13,6 +13,12 @@ export class MessagesController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Get('my/unread')
+  async findUnread(@Request() req) {
+    return this.messagesService.findUnread(req.user.userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Get(':exchangeId')
   async findByExchange(@Request() req, @Param('exchangeId') exchangeId: string) {
     return this.messagesService.findByExchange(req.user.userId, parseInt(exchangeId));
