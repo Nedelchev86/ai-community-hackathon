@@ -65,4 +65,43 @@ export class ReviewsService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async getGlobalStats() {
+    const completedExchanges = await this.prisma.exchange.count({
+      where: { status: 'completed' },
+    });
+    const availableDonations = await this.prisma.donation.count({
+      where: { status: 'available' },
+    });
+    
+    const aggregations = await this.prisma.review.aggregate({
+      _avg: {
+        rating: true,
+      },
+    });
+
+    return {
+      donated: completedExchanges,
+      pending: availableDonations,
+      averageRating: aggregations._avg.rating || 0,
+    };
+  }
+
+  async getRecentReviews(limit = 10) {
+    return this.prisma.review.findMany({
+      take: limit,
+      where: { 
+        comment: { not: null },
+        NOT: { comment: '' }
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        reviewer: { select: { id: true, name: true, avatarUrl: true } },
+        reviewee: { select: { id: true, name: true, avatarUrl: true } },
+        exchange: {
+          include: { donation: { select: { title: true, category: true, userId: true } } },
+        },
+      },
+    });
+  }
 }

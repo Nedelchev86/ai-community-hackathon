@@ -5,6 +5,7 @@ import {
   UseGuards,
   Request,
   Get,
+  Query,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -12,6 +13,17 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
+
+  @Get('stats')
+  async getGlobalStats() {
+    return this.reviewsService.getGlobalStats();
+  }
+
+  @Get('recent')
+  async getRecentReviews(@Query('limit') limit: string) {
+    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    return this.reviewsService.getRecentReviews(parsedLimit);
+  }
 
   @Post()
   @UseGuards(AuthGuard('jwt'))

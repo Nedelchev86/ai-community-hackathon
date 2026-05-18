@@ -1,4 +1,4 @@
-import DonationMap from "@/components/DonationMap";
+import { DonationMap } from "@/components/DonationMap";
 
 const MapPage = () => {
     return (

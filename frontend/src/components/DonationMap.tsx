@@ -37,6 +37,7 @@ interface MapPoint {
 }
 
 const BURGAS: [number, number] = [42.5048, 27.4626];
+const BULGARIA_CENTER: [number, number] = [42.7339, 25.4858];
 
 const CITIES = [
     {name: "София", coords: [42.6977, 23.3219] as [number, number]},
@@ -162,13 +163,13 @@ export const DonationMap = () => {
     }, []);
 
     const [category, setCategory] = useState<Category | "all">("all");
-    const [radius, setRadius] = useState(5);
+    const [radius, setRadius] = useState(500);
     const [activeTypes, setActiveTypes] = useState<Record<PointType, boolean>>({
         donation: true,
         need: true,
         hub: true,
     });
-    const [center, setCenter] = useState<[number, number]>(BURGAS);
+    const [center, setCenter] = useState<[number, number]>(BULGARIA_CENTER);
     const [selected, setSelected] = useState<MapPoint | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
@@ -381,12 +382,12 @@ export const DonationMap = () => {
 
                     <Card className="p-5 border-2">
                         <h3 className="font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
-                            Радиус: <span className="text-primary">{radius} км</span>
+                            Радиус: <span className="text-primary">{radius >= 500 ? "Цяла България" : `${radius} км`}</span>
                         </h3>
-                        <Slider value={[radius]} min={1} max={50} step={1} onValueChange={(v) => setRadius(v[0])} />
+                        <Slider value={[radius]} min={1} max={500} step={1} onValueChange={(v) => setRadius(v[0])} />
                         <div className="flex justify-between text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-tighter">
                             <span>1 км</span>
-                            <span>50 км</span>
+                            <span>500 км</span>
                         </div>
                     </Card>
 
@@ -418,7 +419,7 @@ export const DonationMap = () => {
 
                 {/* Map */}
                 <Card className="overflow-hidden border-2 shadow-soft h-[650px] relative z-0 isolate group">
-                    <MapContainer center={center} zoom={13} scrollWheelZoom={true} style={{height: "100%", width: "100%"}}>
+                    <MapContainer center={center} zoom={7} scrollWheelZoom={true} style={{height: "100%", width: "100%"}}>
                         <Recenter center={center} />
                         <MapEvents onMapClick={(lat, lng) => setCenter([lat, lng])} />
                         <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />

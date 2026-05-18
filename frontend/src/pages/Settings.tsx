@@ -4,11 +4,20 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
 import {Label} from "@/components/ui/label";
-import {User, Phone, MapPin, Info, Lock, ArrowLeft} from "lucide-react";
+import {Badge} from "@/components/ui/badge";
+import {Progress} from "@/components/ui/progress";
+import {User, Phone, MapPin, Info, Lock, ArrowLeft, ShieldCheck, BadgeCheck, Mail} from "lucide-react";
 import {useAuth} from "@/contexts/AuthContext";
 import {toast} from "sonner";
 import {Link, useNavigate} from "react-router-dom";
 import {API_BASE} from "@/lib/api";
+
+const TRUST_CHECKS = [
+  { icon: Mail, label: "Имейл потвърден", done: true },
+  { icon: Phone, label: "Телефон потвърден", done: true },
+  { icon: BadgeCheck, label: "Лична карта (опц.)", done: false },
+  { icon: MapPin, label: "Локация потвърдена", done: true },
+];
 
 const Settings = () => {
     const {user} = useAuth();
@@ -154,6 +163,49 @@ const Settings = () => {
                             </div>
                         </div>
                     </form>
+                </Card>
+
+                {/* Trust card */}
+                <Card className="p-8 border-2 shadow-soft">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-6 h-6 text-primary" />
+                            <h3 className="font-bold text-xl">Доверен профил</h3>
+                        </div>
+                        <Badge className="sm:ml-auto w-fit bg-primary/10 text-primary border-0 text-sm px-3 py-1">75% Завършен</Badge>
+                    </div>
+                    <p className="text-muted-foreground mb-6">
+                        Завършете всички стъпки, за да изградите максимално доверие в общността и да получите значка "Доверен потребител".
+                    </p>
+                    <Progress value={75} className="h-3 mb-8" />
+                    
+                    <div className="grid sm:grid-cols-2 gap-4">
+                        {TRUST_CHECKS.map((t, i) => {
+                            const Icon = t.icon;
+                            return (
+                                <div
+                                    key={i}
+                                    className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                                        t.done ? "border-primary/30 bg-primary/5 shadow-sm" : "border-dashed border-border opacity-70 hover:opacity-100 hover:border-primary/50 cursor-pointer"
+                                    }`}
+                                    onClick={() => !t.done && toast.info(`Функцията за потвърждаване на ${t.label.toLowerCase()} предстои да бъде добавена.`)}
+                                >
+                                    <div className={`w-10 h-10 rounded-full grid place-items-center shrink-0 ${t.done ? "bg-gradient-primary text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground"}`}>
+                                        <Icon className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-semibold text-sm truncate">{t.label}</div>
+                                        <div className="text-xs text-muted-foreground">{t.done ? "Потвърдено" : "Изисква действие"}</div>
+                                    </div>
+                                    {t.done ? (
+                                        <BadgeCheck className="w-6 h-6 text-primary shrink-0" />
+                                    ) : (
+                                        <Button variant="outline" size="sm" className="h-8 shrink-0">Потвърди</Button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </Card>
             </main>
         </div>

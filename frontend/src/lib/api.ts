@@ -1,5 +1,17 @@
 export const API_BASE = "https://ai-community-hackathon-be.onrender.com";
 
+export async function getReviewsStats() {
+    const res = await fetch(`${API_BASE}/reviews/stats`);
+    if (!res.ok) throw new Error("Failed to fetch reviews stats");
+    return res.json();
+}
+
+export async function getRecentReviews(limit = 10) {
+    const res = await fetch(`${API_BASE}/reviews/recent?limit=${limit}`);
+    if (!res.ok) throw new Error("Failed to fetch recent reviews");
+    return res.json();
+}
+
 export async function getEvents() {
     const res = await fetch(`${API_BASE}/events`);
     if (!res.ok) throw new Error("Failed to fetch events");
@@ -120,4 +132,5 @@ export async function toggleStorySupport(storyId: number, token: string) {
     if (!res.ok) throw new Error("Failed to toggle support");
     return res.json();
 }
+
 
