@@ -1,5 +1,5 @@
 import {useEffect, useState, useCallback} from "react";
-import {Link} from "react-router-dom";
+import {Link, useSearchParams, useLocation} from "react-router-dom";
 import {Card} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
@@ -74,6 +74,7 @@ const Profile = () => {
     // Chat States
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [activeChatExchange, setActiveChatExchange] = useState<Exchange | null>(null);
+    const [unreadExchanges, setUnreadExchanges] = useState<Set<number>>(new Set());
 
     const fetchData = useCallback(() => {
         if (!token) return;
@@ -96,6 +97,17 @@ const Profile = () => {
         fetch(`${API_BASE}/reviews/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then((res) => res.json())
             .then((data) => setMyReviews(Array.isArray(data) ? data : []))
+            .catch(console.error);
+
+        fetch(`${API_BASE}/messages/my/unread`, { headers: { Authorization: `Bearer ${token}` } })
+            .then((res) => res.json())
+            .then((data) => {
+                if (Array.isArray(data)) {
+                    const unreadSet = new Set<number>();
+                    data.forEach(msg => unreadSet.add(msg.exchangeId));
+                    setUnreadExchanges(unreadSet);
+                }
+            })
             .catch(console.error);
 
         getEvents()
@@ -206,6 +218,13 @@ const Profile = () => {
     const handleOpenChat = (ex: Exchange) => {
         setActiveChatExchange(ex);
         setIsChatOpen(true);
+        if (unreadExchanges.has(ex.id)) {
+            setUnreadExchanges(prev => {
+                const next = new Set(prev);
+                next.delete(ex.id);
+                return next;
+            });
+        }
     };
 
     const overall = myReviews.length ? myReviews.reduce((sum, r) => sum + r.rating, 0) / myReviews.length : 0;
@@ -408,10 +427,15 @@ const Profile = () => {
                                             <div className="text-xs text-muted-foreground">Собственик: <span className="font-semibold text-foreground">{r.donation.user?.name}</span></div>
                                             <Badge variant="secondary" className="mt-1">{r.status}</Badge>
                                         </div>
-                                        <div className="flex gap-2 shrink-0">
-                                            <Button size="sm" variant="outline" className="border-primary text-primary" onClick={() => handleOpenChat(r)}>
-                                                <MessageCircle className="w-4 h-4" />
-                                            </Button>
+                                        <div className="flex gap-2 shrink-0 items-center">
+                                            <div className="relative">
+                                                <Button size="sm" variant="outline" className="border-primary text-primary" onClick={() => handleOpenChat(r)}>
+                                                    <MessageCircle className="w-4 h-4" />
+                                                </Button>
+                                                {unreadExchanges.has(r.id) && (
+                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+                                                )}
+                                            </div>
                                             {r.status === 'accepted' && (
                                                 <Button size="sm" className="bg-primary hover:opacity-90" onClick={() => handleAction(r.id, 'complete')}>
                                                     <CheckCircle2 className="w-4 h-4 mr-1" /> Получено

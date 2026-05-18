@@ -1,17 +1,41 @@
-import {Heart, PackagePlus, Menu, LogOut, Settings, User, Star, UserPlus, LogIn, HandHeart, HeartHandshake, MapPin} from "lucide-react";
-import {Link, useLocation} from "react-router-dom";
+import {Heart, PackagePlus, Menu, LogOut, Settings, User, Star, UserPlus, LogIn, HandHeart, HeartHandshake, MapPin, MessageCircle} from "lucide-react";
+import {Link, useLocation, useNavigate} from "react-router-dom";
 import {Button} from "@/components/ui/button";
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger} from "@/components/ui/sheet";
 import {motion} from "framer-motion";
 import {useAuth} from "@/contexts/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { API_BASE } from "@/lib/api";
 
 export function Header() {
     const {user, isAuthenticated, logout} = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            const token = localStorage.getItem("access_token");
+            if (token) {
+                const fetchUnread = () => {
+                    fetch(`${API_BASE}/messages/my/unread`, { headers: { Authorization: `Bearer ${token}` } })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (Array.isArray(data)) {
+                                setUnreadCount(data.length);
+                            }
+                        })
+                        .catch(console.error);
+                };
+                fetchUnread();
+                const interval = setInterval(fetchUnread, 15000);
+                return () => clearInterval(interval);
+            }
+        }
+    }, [isAuthenticated, location.pathname]); // Re-fetch on nav to refresh after chat
 
     const navLinks = [
         { href: "/#how", label: "Как работи", isAnchor: true },
@@ -85,6 +109,15 @@ export function Header() {
                                     </Button>
                                 </Link>
                             </div>
+
+                            <button onClick={() => navigate('/profile?tab=requests')} className="relative p-2 text-muted-foreground hover:text-primary transition-colors outline-none focus:ring-2 focus:ring-primary rounded-full">
+                                <MessageCircle className="w-6 h-6" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-background">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -162,6 +195,14 @@ export function Header() {
                             <div className="mt-auto space-y-4 pt-6 border-t">
                                 {isAuthenticated ? (
                                     <div className="grid grid-cols-1 gap-3">
+                                        <Button variant="ghost" className="w-full justify-start relative text-muted-foreground hover:text-primary" onClick={() => { setIsOpen(false); navigate('/profile?tab=requests'); }}>
+                                            <MessageCircle className="w-4 h-4 mr-2" /> Заявки и Съобщения
+                                            {unreadCount > 0 && (
+                                                <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                                    {unreadCount}
+                                                </span>
+                                            )}
+                                        </Button>
                                         <Link to="/donate" onClick={() => setIsOpen(false)}>
                                             <Button className="w-full bg-gradient-primary rounded-xl h-11">
                                                 <PackagePlus className="w-4 h-4 mr-2" /> Дари вещ
